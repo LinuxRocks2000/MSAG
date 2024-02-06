@@ -1,0 +1,13 @@
+Server code for MSAG - Multiplayer Survival Adventure Game.
+
+This is a C++ project. I recommend building it with one of the docker containers in build/, as those have toolchains set up for sanity, but you can also build it yourself: compile all the C++ files in the map/ and mob/ directories
+as shared object files named the same way as their sources (eg desert.cpp -> desert.so). Make sure they can sanely #include <interface.hpp> (-I for this directory on most compilers). This uses threads, so on some systems you may need to -lpthread.
+Successful build isn't really guaranteed, and unless you have some pressing reason to make it fully native you should just run it in the docker container. The docker container is this directory. It's not that hard.
+
+To run this, just start the server executable in some directory where it can import map shared objects from a map/ directory and a mob/ directory.
+
+Don't even try running this on windows. It won't work. It'll won't work really hilariously too.
+
+Game states are stored as binary files in the games/ directory, you shouldn't touch stuff in there. The server will automatically generate/load game files when necessary.
+
+Everything else is controlled by the REST API or websocket commands.
