@@ -25,17 +25,22 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
-#include <string>
-#include <vector>
+#include "sha1.hpp"
+#include "base64.hpp"
 
 
 // definitions for the parser states
-#define HTTP_METHOD   0 // waiting state too.
-#define HTTP_URI      1 // we're buffering until we receive the URI
-#define HTTP_VERSION  2 // we're waiting for the HTTP version (anything but 1.1 will fail)
-#define HTTP_HEADER_1 3 // we're getting the name of a header
-#define HTTP_HEADER_2 4 // we're getting the value of a header
-#define HTTP_CONTENT  5 // we're reading http content
+#define HTTP_METHOD              0 // waiting state too.
+#define HTTP_URI                 1 // we're buffering until we receive the URI
+#define HTTP_VERSION             2 // we're waiting for the HTTP version (anything but 1.1 will fail)
+#define HTTP_HEADER_1            3 // we're getting the name of a header
+#define HTTP_HEADER_2            4 // we're getting the value of a header
+#define HTTP_CONTENT             5 // we're reading http content
+#define WEBSOCKET_1              6 // we're waiting for the first 2 bytes of a websocket header (containing the flags and stuff)
+#define WEBSOCKET_LEN16          7 // we're reading a websocket extended length 16b
+#define WEBSOCKET_LEN64          8 // we're reading a websocket extended length 64b
+#define WEBSOCKET_MASKING_KEY    9 // we're reading a websocket masking key 
+#define WEBSOCKET_PAYLOAD       10 // we're processing the websocket payload
 
 // definitions for the http method
 #define HTTP_METHOD_NONE  -1 // either there was an error, or this hasn't been set yet.
@@ -66,6 +71,11 @@
 #define HTTP_UPGRADE_OTHER     3 // anything else
 // it's certainly possible, but probably will never be necessary, to add other upgrade types
 
+// definitions for HTTP Connection header.
+#define HTTP_CONNECTION_CLOSE     0b00000001 // default. close the connection once we're done with the transaction.
+#define HTTP_CONNECTION_KEEPALIVE 0b00000010 // don't close the connection, duh
+#define HTTP_CONNECTION_UPGRADE   0b00000100 // upgrade the connection (implies keep-alive)
+
 
 // convert an HTTP status code to the word it represents
 const char* code2word(int code) {
@@ -74,6 +84,7 @@ const char* code2word(int code) {
         case 400: return "Bad Request";
         case 404: return "File Not Found";
         case 101: return "Switching Protocols";
+        case 418: return "I'm At A Bad Stage In My Life For That"; // it's actually I'm A Teapot, but this version is so much more evocative!
     }
     return "I've Got Problems, OK?";
 }
@@ -86,6 +97,51 @@ const char* contentTypeString(int contentType) {
         case HTTP_CONTENT_TYPE_JAVASCRIPT: return "application/javascript";
     }
     return "text/plain";
+}
+
+
+uint8_t sixteen(char byte) { // probably won't need this, but I'm keeping it here just in case.
+    // it gets the 4-bit representation of a single base 16 byte, so if you've got, like 0xFF, you'd want to
+    // sixteen('F') * 16 + sixteen('F'). You can also use bitshifting if you feel like it, which is slightly more efficient.
+    if (byte >= '0' && byte <= '9') {
+        return byte - '0';
+    }
+    if (byte >= 'a' && byte <= 'f') {
+        return 10 + byte - 'a';
+    }
+    if (byte >= 'A' && byte <= 'F') {
+        return 10 + byte - 'A';
+    }
+    printf("BAD BASE-16 DECODE!");
+    return 0;
+}
+
+std::string upperCase(std::string in) {
+    for (size_t i = 0; i < in.size(); i ++) {
+        if (in[i] >= 'a' && in[i] <= 'z') { // could be optimized, but is it really necessary? see that random stackoverflow
+            // post where that guy says it's not necessary
+            in[i] -= 'a';
+            in[i] += 'A';
+        }
+    }
+    return in;
+}
+
+
+std::string from16(std::string data) {
+    std::string ret;
+    ret.reserve(data.size() / 2); // allocate ONCE, I tell ye, ONCE
+    for (size_t i = 0; i < data.length(); i += 2) {
+        ret += (char)((sixteen(data[i]) << 4) + sixteen(data[i + 1]));
+    }
+    return ret;
+}
+
+std::string websocketAcceptCalculate(std::string key) {
+    SHA1 hasher;
+    printf("Key: %s\n", key.c_str());
+    hasher.update(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+    return macaron::Base64::Encode(from16(hasher.final()));
 }
 
 
@@ -241,7 +297,7 @@ struct RingString { // ring-buffer of chars. mainly useful as an efficient FIFO 
 };
 
 
-template <size_t BufferSize=512>
+template <size_t BufferSize=512> // TODO: pick a better buffer size. Got to do performance tests to determine which one makes most sense for our uses.
 struct SocketSendBuffer { // buffers sends on a socket, Nagle-style, to minimize syscalls.
     char buffer[BufferSize]; // very small buffer for now; increase size later if necessary (most messages will be under a kilobyte)
     int size = 0;
@@ -276,11 +332,20 @@ struct SocketSendBuffer { // buffers sends on a socket, Nagle-style, to minimize
         write(data.c_str(), data.size());
     }
 
+    void write(char data) {
+        write(&data, 1); // TODO: make this faster, right now it engages the full algorithm for a single-byte write.
+    }
+
     void flush() { // always call this after you're done sending any frame of anything; it's never guaranteed what will be left in it.
         if (size != 0) { // if your data aligned perfectly with the buffer, the final flush call you MUST make will have nothing to flush. so just immediately return.
             send(csocket, buffer, size, 0);
             size = 0; // does NOT clean the buffer; make sure to pay attention to size at all times!
         }
+    }
+
+    void close() {
+        shutdown(csocket, SHUT_RDWR);
+        ::close(csocket);
     }
 };
 
@@ -291,7 +356,58 @@ struct StringPair {
 };
 
 
-struct WebSocketFrame {};
+struct WebSocketFrame {
+    // BIG TODO: packet fragmentation! Right now we don't fragment at all!
+    // ANOTHER BIG TODO: implement opcodes! Right now we totally ignore all of them, assuming binary for everything (and ignoring continuation). This
+    // is a serious implementation flaw and MUST BE FIXED!
+
+    // TODO: PING/PONG!
+    bool fin = true;
+    uint8_t rsv = 0; // 3-bit number representing the RSV bits
+    bool mask = false;
+    uint8_t opcode = 0x2; // 4-bit operation code
+    uint64_t length = 0; // the payload should be unsigned and no larger than 64 bits; after all, a negative payload would hint at some serious endianness problems
+    uint32_t maskData = 0; // keep this at 0 if mask is false.
+    std::string payload; // MAKE SURE TO RESERVE, DANGIT! WE ARE *NOT* DOING 100 ALLOCATIONS TO RECEIVE A SINGLE SCUTTING FRAME!
+    // TODO: verify that I used reserve properly.
+
+    void sendTo(SocketSendBuffer<>* socket) {
+        // TODO: check if it's worthwhile to use a raw socket and a stack-allocated buffer (only really valid for )
+        socket -> write((fin << 7) // move the FIN bit to the MSB
+                   | (rsv << 4) // shift RSV up to fill the second, third, and fourth MSBs
+                   | (opcode)); // shove the opcode in
+        // The server won't ever mask, because that's pointless. If we ever need masking for some unfathomable reason, add it. for now, though - no.
+        if (length <= 125) {
+            socket -> write(length);
+        }
+        else if (length < 65536) { // if it'll fit in the 16-bit int
+            socket -> write(126);
+            uint16_t l = htons(length);
+            socket -> write((char*)&l, 2);
+        }
+        else {
+            socket -> write(127);
+            uint64_t l = htonl(length);
+            socket -> write((char*)&l, 8);
+        }
+        socket -> write(payload);
+
+        socket -> flush(); // always gotta call this
+    }
+
+    void sendTo(int socket) {
+        SocketSendBuffer buffer(socket);
+        sendTo(&buffer);
+    }
+
+    WebSocketFrame(std::string frame) {
+        length = frame.size();
+        payload = frame;
+    }
+
+    WebSocketFrame(){}
+};
+
 struct HTTPRequest {
     int method = HTTP_METHOD_NONE; // see the top of this file.
     size_t size = 0; // if the content-length header isn't present, the data length will be assumed to be 0.
@@ -300,11 +416,18 @@ struct HTTPRequest {
     std::vector<StringPair> cookies;
     uint32_t flags = 0; // see the start of this file for applicable flags
     std::string content;
+    int connectionFlags = HTTP_CONNECTION_CLOSE;
 
-    bool header(std::string name, std::string value) { // check if a header is == a value (returns false if that header is not present)
-        for (int i = 0; i < headers.size(); i ++) {
+    bool header(std::string name, std::string value, bool ignoreCase = false) { // check if a header is == a value (returns false if that header is not present)
+        for (size_t i = 0; i < headers.size(); i ++) {
             if (headers[i].one == name) {
-                return headers[i].two == value; // NOTE: cookies will fail with this because only the first Cookie header will be processed
+                if (ignoreCase) { // this is SLOW! It has to do far too many redundant operations to be sane. TODO: implement sane ignore-case string comparison.
+                    return lowerCase(headers[i].two) == lowerCase(value);
+                }
+                else {
+                    return headers[i].two == value;
+                }
+                // NOTE: cookies will fail with this because only the first Cookie header will be processed
                 // (it's a short-circuit optimization). This is why we have dedicated cookie processing. Sorta. Er.
                 // Ok, it's a TODO, but when we have dedicated cookie processing it'll work and this still won't. Yeah.
                 // I'm not aware of any other headers that we'll have to worry about that allow duplication, so except for cookies
@@ -317,7 +440,7 @@ struct HTTPRequest {
     }
 
     std::string header(std::string name) {
-        for (int i = 0; i < headers.size(); i ++) {
+        for (size_t i = 0; i < headers.size(); i ++) {
             if (headers[i].one == name) {
                 return headers[i].two;
             }
@@ -327,15 +450,16 @@ struct HTTPRequest {
 
     int getUpgrade() { // TODO: do upgrade processing *during* request processing to avoid all this loop overhead.
         // that's a really big TODO, actually, so let's make it four TODOs instead of one TODO. hee hee hee
-        if (!header("connection", "upgrade")) {
+        if (!(connectionFlags & HTTP_CONNECTION_UPGRADE)) {
             return HTTP_UPGRADE_NONE;
         }
         std::string h = header("upgrade");
+        printf("Got upgrade %s\n", h.c_str());
         if (h == "") { // if we're getting nothing for the upgrade header, but the connection is set to upgrade (see above shortcircuit), this is a malformed request.
             return HTTP_UPGRADE_ERROR;
         }
         if (h == "websocket") {
-            if (header("sec-websocket-version", "13")) { // TODO: check if we *really* have to verify a sec-websocket-key. I bet we don't, so I'm not adding it right now.
+            if (header("sec-websocket-version", "13") && header("sec-websocket-key") != "") { // check if the websocket handshake headers are intact
                 return HTTP_UPGRADE_WEBSOCKET;
             }
             return HTTP_UPGRADE_ERROR; // it doesn't have a websocket version we can parse, this is a problem.
@@ -350,6 +474,7 @@ struct HTTPResponse {
     std::vector<StringPair> cookies;
     std::string data;
     int contentType = HTTP_CONTENT_TYPE_PLAINTEXT;
+    int connectionFlags = HTTP_CONNECTION_CLOSE;
 
     HTTPResponse(int c, std::string d) {
         code = c;
@@ -377,16 +502,33 @@ struct HTTPResponse {
         }
         // TODO: cookies.
 
+        socket.write("Connection: ");
+        if (connectionFlags & HTTP_CONNECTION_UPGRADE) { // todo: prettify this a bit
+            socket.write("Upgrade");
+        }
+        else if (connectionFlags & HTTP_CONNECTION_KEEPALIVE) {
+            socket.write("keep-alive");
+        }
+        else {
+            socket.write("close");
+        }
+        socket.write("\r\n");
         socket.write("Content-Length: ");
         socket.write(std::to_string(data.size()));
         socket.write("\r\n");
-        socket.write("Content-Type: ");
-        socket.write(contentTypeString(contentType));
-        socket.write("\r\n");
+        if (data.size() > 0) {
+            socket.write("Content-Type: ");
+            socket.write(contentTypeString(contentType));
+            socket.write("\r\n");
+        }
         socket.write("\r\n"); // that empty line
         socket.write(data);
 
         socket.flush();
+        if (connectionFlags & HTTP_CONNECTION_CLOSE) {
+            printf("done, closing");
+            socket.close();
+        }
     }
 };
 
@@ -394,7 +536,8 @@ template <typename Handler, typename DataArgument>
 struct ClientInternal {
     std::mutex me_mutex;
     RingString buffer;
-    int socket;
+    int socket; // TODO: Make this a SocketSendBuffer (to match the RingString) instead of a raw socket, so we can avoid the random extra 512-byte stack allocations
+    // when somebody doesn't like standard WS apis
     Handler handler;
     int state = HTTP_METHOD; // see the top of this file
     HTTPRequest httpBuffer;
@@ -410,8 +553,6 @@ struct ClientInternal {
     void badRequest(std::string body = "The data you sent me... eet eez ze BAD! Please to improving zis datas!\n") {
         HTTPResponse error (400, body);
         error.sendTo(socket);
-        shutdown(socket, SHUT_RDWR); // the "graceful shutdown"; sends a FIN and notifies the kernel that this connection is over
-        close(socket); // destroy the file descriptor, we aren't going to wait for any more data
     }
 
     void gotData() { // this behemoth processes an HTTP or WebSocket frame.
@@ -506,9 +647,36 @@ struct ClientInternal {
                 }
                 else {
                     std::string headerData = buffer.popFront(up);
+                    if (headerData[headerData.size() - 1] == '\r') {
+                        headerData.pop_back(); // pop off the \r
+                    }
                     buffer.popFront(); // pop out the \n
                     if (headerName == "content-length") {
                         httpBuffer.size = stoi(headerData);
+                    }
+                    else if (headerName == "connection") {
+                        httpBuffer.connectionFlags = 0;
+                        std::string buffer;
+                        for (size_t i = 0; i <= headerData.size(); i ++) { // if you think I made a mistake here, look more carefully at the loop content
+                            if (headerData[i] == ',' || i == headerData.size()) {
+                                if (buffer == "keep-alive") {
+                                    httpBuffer.connectionFlags |= HTTP_CONNECTION_KEEPALIVE;
+                                }
+                                if (buffer == "Upgrade") {
+                                    httpBuffer.connectionFlags |= HTTP_CONNECTION_UPGRADE;
+                                }
+                                if (buffer == "close") {
+                                    httpBuffer.connectionFlags |= HTTP_CONNECTION_CLOSE;
+                                }
+                                buffer.clear();
+                            }
+                            else {
+                                if (headerData[i] != ' ') {
+                                    buffer += headerData[i];
+                                }
+                            }
+                        }
+                        printf("Got connection flags %d\n", httpBuffer.connectionFlags);
                     }
                     else {
                         httpBuffer.headers.push_back(StringPair {
@@ -523,21 +691,110 @@ struct ClientInternal {
         }
         if (state == HTTP_CONTENT) {
             if (buffer.length >= httpBuffer.size) {
-                httpBuffer.content = buffer.popFront(httpBuffer.size);
+                if (httpBuffer.size != 0) {
+                    httpBuffer.content = buffer.popFront(httpBuffer.size);
+                }
                 // this http request is finished. let's send it to the handler, and clear the HTTP buffer.
-                state = HTTP_METHOD;
+                state = HTTP_METHOD; // can be overridden by handleRequest. MAKE SURE THIS IS ALWAYS BEFORE handleRequest.
                 handleRequest(httpBuffer);
                 httpBuffer = HTTPRequest{};               
+            }
+        }
+        if (state == WEBSOCKET_1) {
+            if (buffer.length >= 2) { // the main part of the websocket header is 2 bytes; we can't even begin parsing a
+                // websocket frame until we've got those two bytes.
+                uint8_t data[2];
+                buffer.popFront((char*)data, 2);
+                wsBuffer.fin = data[0] & 128; // first bit of the first byte.
+                wsBuffer.rsv = (data[0] & 0b01110000) >> 4; // cut out the RSV bits and bitshift them down 4, so now we've got a convenient RSV int.
+                wsBuffer.opcode = data[0] & 0b00001111; // truncate all but the opcode bits
+                wsBuffer.mask = data[1] >> 7; // cut off most of the bits; we only want the MSB
+                wsBuffer.length = data[1] & 0b01111111;
+                if (wsBuffer.length == 126) {
+                    state = WEBSOCKET_LEN16;
+                }
+                else if (wsBuffer.length == 127) {
+                    state = WEBSOCKET_LEN64;
+                }
+                else {
+                    state = WEBSOCKET_MASKING_KEY;
+                }
+            }
+        }
+        if (state == WEBSOCKET_LEN16) {
+            if (buffer.length >= 2) {
+                buffer.popFront((char*)&wsBuffer.length, 2);
+                wsBuffer.length = ntohs(wsBuffer.length);
+                state = WEBSOCKET_MASKING_KEY;
+            }
+        }
+        if (state == WEBSOCKET_LEN64) {
+            if (buffer.length >= 8) {
+                buffer.popFront((char*)&wsBuffer.length, 8);
+                wsBuffer.length = ntohl(wsBuffer.length); // the length is usually encoded as big-endian, as I discovered the hard way. Or is it little-endian?
+                // anyways ntohl and ntohs convert between network and host endianness so I don't have to worry about it, they're sweet that way
+                // POSSIBLE BUG: Not properly converting length with htons/htonl will cause problems!
+                state = WEBSOCKET_MASKING_KEY;
+            }
+        }
+        if (state == WEBSOCKET_MASKING_KEY) {
+            if (wsBuffer.mask) {
+                if (buffer.length >= 4) {
+                    buffer.popFront((char*)&wsBuffer.maskData, 4);
+                    state = WEBSOCKET_PAYLOAD;
+                }
+            }
+            else {
+                // TODO: check the spec on this. I'm pretty sure we're actually supposed to immediately disconnect in this case.
+                state = WEBSOCKET_PAYLOAD;
+            }
+        }
+        if (state == WEBSOCKET_PAYLOAD) {
+            if (buffer.length >= wsBuffer.length) {
+                wsBuffer.payload = buffer.popFront(wsBuffer.length); // TODO: Make sure this isn't doing more than one allocation! *SERIOUSLY*!
+                for (size_t i = 0; i < wsBuffer.payload.size(); i ++) {
+                    wsBuffer.payload[i] = wsBuffer.payload[i] ^ (((char*)&wsBuffer.maskData)[i % 4]);
+                }
+                handler.gotWebsocketMessage(wsBuffer); // TODO: give the handler means to send arbitrary websocket frames!
+                wsBuffer = WebSocketFrame{};
+                state = WEBSOCKET_1;
             }
         }
     }
 
     void handleRequest(HTTPRequest request) {
+        printf("handling request\n");
         HTTPResponse response;
+        response.connectionFlags = request.connectionFlags;
         int upgrade = request.getUpgrade();
         if (upgrade == HTTP_UPGRADE_ERROR || upgrade == HTTP_UPGRADE_OTHER) {
             response.code = 400;
             response.data = "Bad Upgrade!";
+            response.connectionFlags = HTTP_CONNECTION_CLOSE;
+        }
+        else if (upgrade == HTTP_UPGRADE_WEBSOCKET) {
+            // let's see what the handler thinks about upgrading this guy to websocket
+            if (handler.mayWebsocketUpgrade(&request)) {
+                printf("Upgrading to websocket\n");
+                // continue the upgrade, the handler agrees that it's acceptable
+                std::string key = request.header("sec-websocket-key");
+                std::string accept = websocketAcceptCalculate(key);
+                response.headers.push_back({
+                    .one = "Sec-Websocket-Accept",
+                    .two = accept
+                });
+                response.headers.push_back({
+                    .one = "Upgrade",
+                    .two = "websocket"
+                });
+                response.code = 101;
+                state = WEBSOCKET_1;
+                handler.onWebsocketUp(id, socket);
+            }
+            else {
+                response.code = 418; // for now, we're a teapot. TODO: implement the error suite for websocket failures (400, 401, 403, 404, etc);
+                response.data = "Screw You"; // yeah, screw 'em
+            }
         }
         else { // if the server doesn't have other processing routines for this request, just yield to the handler
             handler.httpRequest(request, &response);
@@ -610,11 +867,12 @@ public:
         });
     }
 
-    static bool nonblock(int socket) {
+    static bool nonblock(int socket) { // returns whether or not it was successful; the caller can do whatever it wants with that information (in some parts of the
+        // program it hints at a noncritical race condition and is logged but otherwised ignored)
         // set nonblocking IO mode. This can be used for (bad) spinlocking, but in this specific case we're just using it to avoid annoying race conditions with poll.
         fcntl(socket, F_SETFL, fcntl(socket, F_GETFL, NULL) | O_NONBLOCK);
         // disable nagle's algorithm. Nagle's algorithm buffers TCP packets until they're large enough for the sender to consider them worthy of a whole tcp exchange;
-        // this significantly improves network efficiency, but also adds significant latency.
+        // this significantly improves network efficiency, but also adds significant latency. It's specifically recommended to disable nagle for games, for instance.
         int flag = 1;
         if (setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag)) != 0) {
             printf("Couldn't set a socket to nonblocking mode\n");

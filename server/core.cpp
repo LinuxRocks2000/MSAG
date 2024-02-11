@@ -21,14 +21,17 @@ struct Game { // container class
 
 
 struct Handler {
-    void onWebsocketUp(uint64_t id) {
+    int socket;
 
+    void onWebsocketUp(uint64_t id, int m_socket) {
+        socket = m_socket;
+        printf("Got websocket up\n");
     }
 
     void httpRequest(HTTPRequest request, HTTPResponse* response) {
         if (request.uri == "/") {
             response -> code = 200;
-            response -> data = "<!DOCTYPE html><title>Information</title><p>You have reached an MSAG server. This is just as server; you'll"
+            response -> data = "<!DOCTYPE html><title>Information</title><p>You have reached an MSAG server. This is just a server; you'll"
             " need to get your client somewhere else and specify this server when you connect.</p>";
             response -> contentType = HTTP_CONTENT_TYPE_HTML;
         }
@@ -37,6 +40,19 @@ struct Handler {
             response -> data = "File Not Found";
             response -> contentType = HTTP_CONTENT_TYPE_PLAINTEXT;
         }
+    }
+
+    bool mayWebsocketUpgrade(HTTPRequest* request) { // if it returns true, the upgrade will continue OR this object will be destroyed, so it's okay to start making
+        // decisions right away.
+        if (request -> uri == "/game") { // later, add an int to discriminate what endpoint we on.
+            return true;
+        }
+        return false; // just fer testin' up
+    }
+
+    void gotWebsocketMessage(WebSocketFrame frame) {
+        WebSocketFrame iWasFramed(frame.payload);
+        iWasFramed.sendTo(socket);
     }
 };
 
