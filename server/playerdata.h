@@ -1,5 +1,6 @@
 // player stats ONLY (no position or inventory or the like)
 // I'm mainly writing this for note-taking purposes
+#pragma once
 
 struct PlayerStats {
     float health;                    // the current health of the player. No larger than maxHealth, and if it goes below 0 you die (full sleep heals you to max).
@@ -20,4 +21,13 @@ struct PlayerStats {
     float force;                     // how hard you can swing a sword, draw back an arrow, etc. This improves damage on most manual weapons. Automatic ones will
     // not be improved. If your health or energy goes below 3.0, force is ridiculously reduced. If energy goes to 0, force is set to 0 as well. Technically,
     // if health goes to 0 force is set to 0 as well, because you're dead.
+
+    // craft skills. Craft skills control what you can craft, obviously; if you have insufficient skills to craft something in any area, you can't craft it.
+    // Not all craftable items should be visible to the player! Clients should only show items within a few craft skill points of being craftable (so players
+    // know what they need to improve in the near-term). Craft skills increase by 1 every time you craft something using that skill, and by one extra if the
+    // required craft skill is more than half of your skill: so if you're crafting something with metalworking level 6 and woodworking level 6, and you're at
+    // iron level 7 and wood level 20, you get two points towards metalworking and one point twowards woodworking. This means players will relatively quickly be
+    // able to make all the stuff they need for survival, but it'll be harder as they progress to learn more. You can also get large skill boosts from some items.
+    uint16_t craft_woodworking; // skill with wood, duh
+    uint16_t craft_metalworking; // skill with metals, duh
 }

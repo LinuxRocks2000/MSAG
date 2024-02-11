@@ -12,7 +12,9 @@
 
 
 // convenient but dumb header-only way to do it. later I might make it a fancy linked object.
+// TODO: MAKE SURE THERE ARE NO SEGGIES!!!!!!!!! USE SMART POINTERS!!!!!!!!
 
+#pragma once
 #include <vector>
 #include <sys/poll.h>
 #include <mutex>

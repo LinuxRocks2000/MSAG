@@ -12,12 +12,34 @@
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
 
+
+#define SPEED 30 // number of frames we'll process per second
+
+#include <time.h>
+#include <cstdint>
+
+uint64_t getMillis() {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1000 + t.tv_nsec / 1000000;
+}
+
+void msleep(long msec) // THANKS, STACKOVERFLOW (modified to get rid of the signals, I don't care about those)
+{
+    struct timespec ts;
+
+    ts.tv_sec = msec / 1000;
+    ts.tv_nsec = (msec % 1000) * 1000000;
+
+    nanosleep(&ts, NULL);
+}
+
+
+
 #include "util/net.hpp"
-
-
-struct Game { // container class
-
-};
+#include "game.hpp"
+#include "room.hpp"
+#include "space.hpp"
 
 
 struct Handler {
@@ -61,5 +83,6 @@ int main() {
     NetworkServer<Handler, Game> ns(3001);
     Game game;
     ns.spawnOff(16, &game);
-    ns.block();
+    game.spawnOff(2);
+    game.block();
 }
