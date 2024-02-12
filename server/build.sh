@@ -1,3 +1,6 @@
 # simple barebones build script before I move to a proper makefile
 # because the build command is gettin' bigger all the tiiiiime
-g++ core.cpp -lpthread --std=c++20 -Wall -g
+rm -rf build/
+mkdir build/
+g++ --shared -fPIC map/test.cpp -o map/test.a -I. -g
+g++ -o server util/util.cpp room.cpp game.cpp core.cpp -g -lpthread --std=c++20 -I.

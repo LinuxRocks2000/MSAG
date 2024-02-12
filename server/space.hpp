@@ -9,8 +9,40 @@
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
 #pragma once
+
+#define GROUND_TYPE_SOIL  0 // The simplest ground type. You can walk on it fine, and garden on it find. It has no special behaviors. Holds water.
+#define GROUND_TYPE_SAND  1 // Hard to walk on, low gardening potential, perfectly absorbs water. Very annoying.
+#define GROUND_TYPE_ROCKS 2 // Easy to walk on, impossible to garden on for most plants.
+// Every ground type can have different parameters; the ones listed above are just general guidelines. The reason for the ground type system is to
+// allow special behaviors - like, you can't plant *most* things on sand, but sand will accept cactii (which can't grow elsewhere) and palm trees and such.
+// Add more types at convenience.
+
+#include <stdio.h>
+#include "util/rect.hpp"
 #include <mutex>
+#include <vector>
 struct Room; // forward-dec. BIG, BIG TODO: Make this a proper Makefile project with separate header files and definitions! Will save us a LOT of pain!
+
+
+struct Ground { // all ground types are stored in this struct. It's slightly more efficient than inheritance, and it's simple enough not to matter.
+    Rect shape;
+
+    float moveHindrance; // How much it hinders motion. 0 = no hindrance, 1 = impossible to move while on it.
+    float gardenPotential; // How easy it is to garden on this. 0 = perfect soil, 1 = not gardenable.
+
+    int type; // see above
+
+    // Everything can always move over ground. It doesn't obstruct.
+    
+    static Ground makeBasicEarth(Rect r) { // The simplest soil type. you always have to configure the x, y, w, h properties yourself!
+        return {
+            .shape = r,
+            .moveHindrance = 0.2, // a little higher than Rock.
+            .gardenPotential = 0.3, // it's pretty good for gardening too
+            .type = GROUND_TYPE_SOIL
+        };
+    }
+};
 
 
 struct Space {
@@ -33,8 +65,16 @@ struct Space {
     
     uint64_t updateTime; // in milliseconds. if current time is ever more than or equal to update time, update and increment updateTime by 1000/SPEED.
 
-    Space(uint32_t id) {
-        spaceID = id;
+    std::vector<Ground> groundLayer;
+
+    Space(float w, float h) {
+        spaceID = 0;
+        width = w;
+        height = h;
+    }
+
+    void addGround(Ground g) {
+        groundLayer.push_back(g);
     }
 
     void update() {

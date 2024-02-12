@@ -9,3 +9,21 @@
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
 #pragma once
+#include <cstdint>
+#include <space.hpp>
+#include <memory>
+
+struct Game; // forward-dec
+
+extern "C" {
+    struct Room { // manages maps inside a game
+        Game* game;
+        void* handle;
+        uint32_t spaceID = 1;
+        std::vector<std::shared_ptr<Space>> mSpaces;
+
+        Room(Game* g, const char* mapFile); // Takes a Game and the name of the map shared object it's gonna load
+
+        virtual void addSpace(Space* s); // vtable lookups work across dynamic loads, so we can use member functions sanely! I love it when things just work.
+    };
+}

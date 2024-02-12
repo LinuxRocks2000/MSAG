@@ -11,10 +11,13 @@
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
 
+#pragma once
 #include <pthread.h>
 #include <atomic>
+#include <vector>
 #include <memory>
 #include "space.hpp"
+#include "room.hpp"
 
 
 struct Game {
@@ -24,59 +27,11 @@ struct Game {
     std::mutex dataEdit;
     uint64_t updateStagger = 0;
 
-    static void* child(void* _me) {
-        struct Game* self = (struct Game*)_me;
-        std::vector<std::shared_ptr<Space>> localSpaces; // TODO: less inefficient
-        uint64_t localAge = 0;
-        while (true) {
-            if (self -> dataAge > localAge) {
-                self -> dataEdit.lock();
-                localAge = (uint64_t)self -> dataAge;
-                localSpaces = self -> spaces;
-                self -> dataEdit.unlock();
-            }
-            uint64_t cTime = getMillis();
-            // The process is pretty simple. Each child thread iterates over the spaces array, looking for unlocked spaces that need to update NOW. It locks and updates
-            // them, then continues. As it goes, it's also constantly checking which doesn't need to update *now*, but will need to update soonest. It sleeps until
-            // the soonest one will need execution, then does the whole thing over again.
-            // TODO: check if this model is hotter than necessary.
-            uint64_t soonest = cTime + 10000; // just something ridiculously unreasonable, ten seconds in the future
-            for (size_t i = 0; i < localSpaces.size(); i ++) {
-                if (cTime >= localSpaces[i] -> updateTime && localSpaces[i] -> mutex.try_lock()) {
-                    localSpaces[i] -> update();
-                    localSpaces[i] -> updateTime += 1000 / SPEED;
-                    if (localSpaces[i] -> updateTime < soonest) {
-                        soonest = localSpaces[i] -> updateTime;
-                    }
-                    localSpaces[i] -> mutex.unlock();
-                }
-                else if (localSpaces[i] -> updateTime < soonest) {
-                    soonest = localSpaces[i] -> updateTime;
-                }
-            }
-            msleep(soonest - cTime);
-        }
-    }
+    static void* child(void* _me); // Worker thread
 
-    void pushSpace(std::shared_ptr<Space> space) {
-        space -> updateTime = (getMillis() / (1000/SPEED)) * (1000/SPEED); // clamp it
-        space -> updateTime += updateStagger;
-        updateStagger += 5; // so they all update slightly out-of-sync, meaning the threads stay warm but balance resource load efficiently
-        dataEdit.lock();
-        dataAge ++;
-        spaces.push_back(space);
-        dataEdit.unlock();
-    }
+    void pushSpace(std::shared_ptr<Space> space); // Push a new space into this Room
 
-    void spawnOff(int tCount) { // spawn threads
-        pthread_t buffer;
-        for (int i = 0; i < tCount; i ++) {
-            pthread_create(&buffer, NULL, &child, (void*)this);
-            pthread_detach(buffer);
-        }
-    }
+    void spawnOff(int tCount); // spawn threads
 
-    void block() { // run the worker thread on wherever this is called, blocking that thread permanently
-        child((void*)this);
-    }
+    void block(); // run the worker thread on wherever this is called, blocking that thread permanently
 };
