@@ -12,6 +12,11 @@
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
 
+// BIG TODO: Finish file separation (no definitions in hpp files) and thoroughly comment all the hpp files. Right now it's pretty sparse and you have to read
+// both the source file and the header file to make any sense of it; this must change!
+
+// also TODO: do all the license comments at the tops of files. really this project needs a *lot* of commenting.
+
 #include <time.h>
 #include <cstdint>
 #include "util/net.hpp"
@@ -19,6 +24,7 @@
 #include "room.hpp"
 #include "space.hpp"
 #include "util/util.hpp"
+#include <util/protocol.hpp>
 
 
 struct Handler {
@@ -35,7 +41,7 @@ struct Handler {
             response -> data = "<!DOCTYPE html><title>Information</title><p>You have reached an MSAG server. This is just a server; you'll"
             " need to get your client somewhere else and specify this server when you connect.</p>";
             response -> contentType = HTTP_CONTENT_TYPE_HTML;
-        }
+        } // TODO: Finish implementing the API found in README. It's a pretty sane API.
         else {
             response -> code = 404;
             response -> data = "File Not Found";
@@ -51,9 +57,9 @@ struct Handler {
         return false; // just fer testin' up
     }
 
-    void gotWebsocketMessage(WebSocketFrame frame) {
-        WebSocketFrame iWasFramed(frame.payload);
-        iWasFramed.sendTo(socket);
+    void gotWebsocketMessage(WebSocketFrame frame) {\
+        SocketSendBuffer sender(socket);
+        protocolFrameWrite(&sender, "02f4ssu4", 0.5, "Hello, World", 6999999); // opcode 2, float test, string test, int test.
     }
 };
 

@@ -12,18 +12,21 @@
 #include <cstdint>
 #include <space.hpp>
 #include <memory>
+#include <vector>
+#include <player.hpp>
 
 struct Game; // forward-dec
 
-extern "C" {
-    struct Room { // manages maps inside a game
-        Game* game;
-        void* handle;
-        uint32_t spaceID = 1;
-        std::vector<std::shared_ptr<Space>> mSpaces;
+struct Room { // manages maps inside a game
+    Game* game;
+    void* handle;
+    uint32_t spaceID = 1;
+    bool allowAnonymous = true; // can anonymous players join this room?
+    bool requireApproval = false; // do players have to be approved by superuser to join this room?
+    std::vector<Player> players;
+    std::vector<std::shared_ptr<Space>> mSpaces;
 
-        Room(Game* g, const char* mapFile); // Takes a Game and the name of the map shared object it's gonna load
+    Room(Game* g, const char* mapFile); // Takes a Game and the name of the map shared object it's gonna load
 
-        virtual void addSpace(Space* s); // vtable lookups work across dynamic loads, so we can use member functions sanely! I love it when things just work.
-    };
-}
+    virtual void addSpace(Space* s); // vtable lookups work across dynamic loads, so we can use member functions sanely! I love it when things just work.
+};

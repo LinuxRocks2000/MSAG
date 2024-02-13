@@ -30,4 +30,4 @@ struct PlayerStats {
     // able to make all the stuff they need for survival, but it'll be harder as they progress to learn more. You can also get large skill boosts from some items.
     uint16_t craft_woodworking; // skill with wood, duh
     uint16_t craft_metalworking; // skill with metals, duh
-}
+};

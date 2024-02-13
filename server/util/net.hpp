@@ -29,6 +29,8 @@
 #include <netinet/tcp.h>
 #include "sha1.hpp"
 #include "base64.hpp"
+#include <util/buffersocketwriter.hpp>
+#include <util/util.hpp>
 
 
 // definitions for the parser states
@@ -99,44 +101,6 @@ const char* contentTypeString(int contentType) {
         case HTTP_CONTENT_TYPE_JAVASCRIPT: return "application/javascript";
     }
     return "text/plain";
-}
-
-
-uint8_t sixteen(char byte) { // probably won't need this, but I'm keeping it here just in case.
-    // it gets the 4-bit representation of a single base 16 byte, so if you've got, like 0xFF, you'd want to
-    // sixteen('F') * 16 + sixteen('F'). You can also use bitshifting if you feel like it, which is slightly more efficient.
-    if (byte >= '0' && byte <= '9') {
-        return byte - '0';
-    }
-    if (byte >= 'a' && byte <= 'f') {
-        return 10 + byte - 'a';
-    }
-    if (byte >= 'A' && byte <= 'F') {
-        return 10 + byte - 'A';
-    }
-    printf("BAD BASE-16 DECODE!");
-    return 0;
-}
-
-std::string upperCase(std::string in) {
-    for (size_t i = 0; i < in.size(); i ++) {
-        if (in[i] >= 'a' && in[i] <= 'z') { // could be optimized, but is it really necessary? see that random stackoverflow
-            // post where that guy says it's not necessary
-            in[i] -= 'a';
-            in[i] += 'A';
-        }
-    }
-    return in;
-}
-
-
-std::string from16(std::string data) {
-    std::string ret;
-    ret.reserve(data.size() / 2); // allocate ONCE, I tell ye, ONCE
-    for (size_t i = 0; i < data.length(); i += 2) {
-        ret += (char)((sixteen(data[i]) << 4) + sixteen(data[i + 1]));
-    }
-    return ret;
 }
 
 std::string websocketAcceptCalculate(std::string key) {
@@ -299,59 +263,6 @@ struct RingString { // ring-buffer of chars. mainly useful as an efficient FIFO 
 };
 
 
-template <size_t BufferSize=512> // TODO: pick a better buffer size. Got to do performance tests to determine which one makes most sense for our uses.
-struct SocketSendBuffer { // buffers sends on a socket, Nagle-style, to minimize syscalls.
-    char buffer[BufferSize]; // very small buffer for now; increase size later if necessary (most messages will be under a kilobyte)
-    int size = 0;
-    int csocket;
-
-    SocketSendBuffer(int s) {
-        csocket = s;
-    }
-
-    void write(const char* data, size_t length) {
-        if (length + size < BufferSize) {
-            for (size_t i = 0; i < length; i ++) {
-                buffer[size + i] = data[i];
-            }
-            size += length;
-        }
-        else { // if the buffer is at 510, and we're trying to write "Hello World" (length 11)
-            size_t writeAmount = BufferSize - size - 1; // writeAmount is now 1
-            write(data, writeAmount); // write the first segment of the data ('H' in the example)
-            flush(); // flush the buffer (size is now 0, all data has been sent to the client)
-            write(data + writeAmount, length - writeAmount); // length - writeAmount is 10: we're writing "ello World".
-
-            // this will recurse sanely for absurdly long data.
-        }
-    }
-
-    void write(const char* data) {
-        write(data, strlen(data));
-    }
-
-    void write(std::string data) {
-        write(data.c_str(), data.size());
-    }
-
-    void write(char data) {
-        write(&data, 1); // TODO: make this faster, right now it engages the full algorithm for a single-byte write.
-    }
-
-    void flush() { // always call this after you're done sending any frame of anything; it's never guaranteed what will be left in it.
-        if (size != 0) { // if your data aligned perfectly with the buffer, the final flush call you MUST make will have nothing to flush. so just immediately return.
-            send(csocket, buffer, size, 0);
-            size = 0; // does NOT clean the buffer; make sure to pay attention to size at all times!
-        }
-    }
-
-    void close() {
-        shutdown(csocket, SHUT_RDWR);
-        ::close(csocket);
-    }
-};
-
-
 struct StringPair {
     std::string one;
     std::string two;
@@ -469,6 +380,8 @@ struct HTTPRequest {
         return HTTP_UPGRADE_OTHER; // usually we'll just fail on this as though it were HTTP_UPGRADE_ERROR, but it's nice to have the distinction
     }
 };
+
+
 struct HTTPResponse {
     int code;
     int flags = 0; // see the top of this file

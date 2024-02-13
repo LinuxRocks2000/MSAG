@@ -11,9 +11,16 @@ Game states are stored as binary files in the games/ directory, you shouldn't to
 Everything else is controlled by the REST API or websocket commands.
 
 
-The REST API uses simple HTTP and a websocket upgrade endpoint (for gameplay). At the moment, there are,
- * GET /capabilities: dump server info. Clients should do this immediately on connecting to the server. It contains map data, mob data, and the global user cap. The response will be in JSON.
- * POST /newgame: Post data should contain JSON with a `room_name` property set to the name of your new game, a `map` property set to the name of the map you want to play, a `user_cap` number (which cannot be greater than the server's global user cap), an `allow_anonymous` boolean (controls whether anonymous players will be permitted to join), and a `require_review` boolean describing whether or not the room creator needs to manually accept new users. The response will contain a JSON object with a "root" user token (capable of accepting new users and such, does not have god powers) and a room_id - clients should automatically turn this into a "magic URL" or similar.
- * GET /room/<room>: Retrieve data on a room: name, map, player count and player cap. You can't join a room with maxed-out players. You *should* check this before connecting. 
- * GET /join/<room>/<username>/<password>: create a player in this room. If you are permitted to join this room, you will receive a user token in a json object. On some rooms, this doesn't necessarily mean you're actually able to join - you may need authorization from the room creator to 
- * GET /play/<room>: Join a room. If you don't have the user_token cookie set, you'll join anonymously and won't be able to save your progress (this is disabled in some rooms, which will simply return 403 Unauthorized). This is a websocket upgrade endpoint.
+The API is not restful, it's handled with WebSocket connections. I didn't want to deal with cookies. Shoot me. Just websocket connect to /game.
+
+It uses the same data-compact spec as MMOSG. 
+Frames start with a 1-byte operation code, and then immediately continue into data. String data is encoded with a 1-byte length code. If strlen == 255, parse the next four bytes as the string length. This way most strings will be stored without wasted space, and large strings will have pre-known length (rather than NULL termination or the like). Strings are expected to be UTF-8 encoded. All number types are encoded directly in big-endian. 
+
+There is no formal manifest at the moment. When I do eventually set one up, it'll probably be a compact list of signal names, signal numbers (in hex, so the size is predictably two bytes), signal definitions, and some spacing. Assuming the spacing is a literal space, it'll thus look like:
+`ObjectMove;00u4v2 ObjectResize;01u4f4f4 ChatMessage;02u4ss`
+where `v2` is a 2-dimensional vector, `u4` is a 32-bit (4 byte) int (for object IDs), `ss` is a variable-length string, and `f4` is a 32-bit (4 byte) float. At the moment,
+you can figure out the manifest from protocol calls (see protocol.hpp).
+
+Messages coming *from* the client work the same way, but have different definitions.
+
+TODO: formal manifest
