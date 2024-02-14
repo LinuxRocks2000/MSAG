@@ -59,7 +59,13 @@ struct Handler {
 
     void gotWebsocketMessage(WebSocketFrame frame) {\
         SocketSendBuffer sender(socket);
-        protocolFrameWrite(&sender, "02f4ssu4", 0.5, "Hello, World", 6999999); // opcode 2, float test, string test, int test.
+        protocol::Frame pFrame = protocol::makeFrame(2, "u4u8sc", 687, 2849758744445, "Hello World");
+        size_t size = frameLength(&pFrame);
+        printf("Size: %d\n", size);
+        char buf[size + 1];
+        buf[size] = 0;
+        renderFrame(&pFrame, buf);
+        printf("%s\n", buf);
     }
 };
 
