@@ -18,6 +18,8 @@ struct SocketSendBuffer { // buffers sends on a socket, Nagle-style, to minimize
 
     void write(std::string data);
 
+    void write(std::string_view data);
+
     void write(char data);
 
     void flush();

@@ -13,3 +13,8 @@ uint8_t sixteen(char byte);
 std::string upperCase(std::string in);
 
 std::string from16(std::string data);
+
+struct StringPair {
+    std::string one;
+    std::string two;
+};

@@ -1,0 +1,27 @@
+{
+    "outgoing": {
+        "formats": [
+            {
+                "className": "TestFrame",
+                "opcode": 0,
+                "arguments": [
+                    {
+                        "name": "number",
+                        "type": "uint64_t",
+                        "packing": "static"
+                    },
+                    {
+                        "name": "numbertwo",
+                        "type": "uint64_t",
+                        "packing": "static"
+                    },
+                    {
+                        "name": "signedint",
+                        "type": "int64_t",
+                        "packing": "static"
+                    }
+                ]
+            }
+        ]
+    }
+}

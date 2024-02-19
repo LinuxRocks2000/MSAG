@@ -24,7 +24,7 @@
 #include "room.hpp"
 #include "space.hpp"
 #include "util/util.hpp"
-#include <util/protocol.hpp>
+#include <util/protocol/outgoing.hpp>
 
 
 struct Handler {
@@ -33,6 +33,12 @@ struct Handler {
     void onWebsocketUp(uint64_t id, int m_socket) {
         socket = m_socket;
         printf("Got websocket up\n");
+        SocketSendBuffer sender(socket);
+        protocol::outgoing::TestFrame frame;
+        frame.number = 9999999999;
+        frame.numbertwo = 42069;
+        frame.signedint = -2;
+        frame.sendTo(&sender);
     }
 
     void httpRequest(HTTPRequest request, HTTPResponse* response) {
@@ -57,15 +63,7 @@ struct Handler {
         return false; // just fer testin' up
     }
 
-    void gotWebsocketMessage(WebSocketFrame frame) {\
-        SocketSendBuffer sender(socket);
-        protocol::Frame pFrame = protocol::makeFrame(2, "u4u8sc", 687, 2849758744445, "Hello World");
-        size_t size = frameLength(&pFrame);
-        printf("Size: %d\n", size);
-        char buf[size + 1];
-        buf[size] = 0;
-        renderFrame(&pFrame, buf);
-        printf("%s\n", buf);
+    void gotWebsocketMessage(WebSocketFrame frame) {
     }
 };
 

@@ -31,6 +31,8 @@
 #include "base64.hpp"
 #include <util/buffersocketwriter.hpp>
 #include <util/util.hpp>
+#include <unistd.h>
+#include <util/websocketframe.hpp>
 
 
 // definitions for the parser states
@@ -262,64 +264,6 @@ struct RingString { // ring-buffer of chars. mainly useful as an efficient FIFO 
     }
 };
 
-
-struct StringPair {
-    std::string one;
-    std::string two;
-};
-
-
-struct WebSocketFrame {
-    // BIG TODO: packet fragmentation! Right now we don't fragment at all!
-    // ANOTHER BIG TODO: implement opcodes! Right now we totally ignore all of them, assuming binary for everything (and ignoring continuation). This
-    // is a serious implementation flaw and MUST BE FIXED!
-
-    // TODO: PING/PONG!
-    bool fin = true;
-    uint8_t rsv = 0; // 3-bit number representing the RSV bits
-    bool mask = false;
-    uint8_t opcode = 0x2; // 4-bit operation code
-    uint64_t length = 0; // the payload should be unsigned and no larger than 64 bits; after all, a negative payload would hint at some serious endianness problems
-    uint32_t maskData = 0; // keep this at 0 if mask is false.
-    std::string payload; // MAKE SURE TO RESERVE, DANGIT! WE ARE *NOT* DOING 100 ALLOCATIONS TO RECEIVE A SINGLE SCUTTING FRAME!
-    // TODO: verify that I used reserve properly.
-
-    void sendTo(SocketSendBuffer<>* socket) {
-        // TODO: check if it's worthwhile to use a raw socket and a stack-allocated buffer (only really valid for )
-        socket -> write((fin << 7) // move the FIN bit to the MSB
-                   | (rsv << 4) // shift RSV up to fill the second, third, and fourth MSBs
-                   | (opcode)); // shove the opcode in
-        // The server won't ever mask, because that's pointless. If we ever need masking for some unfathomable reason, add it. for now, though - no.
-        if (length <= 125) {
-            socket -> write(length);
-        }
-        else if (length < 65536) { // if it'll fit in the 16-bit int
-            socket -> write(126);
-            uint16_t l = htons(length);
-            socket -> write((char*)&l, 2);
-        }
-        else {
-            socket -> write(127);
-            uint64_t l = htonl(length);
-            socket -> write((char*)&l, 8);
-        }
-        socket -> write(payload);
-
-        socket -> flush(); // always gotta call this
-    }
-
-    void sendTo(int socket) {
-        SocketSendBuffer buffer(socket);
-        sendTo(&buffer);
-    }
-
-    WebSocketFrame(std::string frame) {
-        length = frame.size();
-        payload = frame;
-    }
-
-    WebSocketFrame(){}
-};
 
 struct HTTPRequest {
     int method = HTTP_METHOD_NONE; // see the top of this file.
@@ -704,7 +648,9 @@ struct ClientInternal {
                 });
                 response.code = 101;
                 state = WEBSOCKET_1;
+                response.sendTo(socket, &request);
                 handler.onWebsocketUp(id, socket);
+                return; // prevent the final sendTo;
             }
             else {
                 response.code = 418; // for now, we're a teapot. TODO: implement the error suite for websocket failures (400, 401, 403, 404, etc);

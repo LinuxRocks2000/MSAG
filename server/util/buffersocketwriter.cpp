@@ -39,6 +39,11 @@ void SocketSendBuffer<>::write(std::string data) {
 }
 
 template<>
+void SocketSendBuffer<>::write(std::string_view data) {
+    write(data.data(), data.size());
+}
+
+template<>
 void SocketSendBuffer<>::write(char data) {
     write(&data, 1); // TODO: make this faster, right now it engages the full algorithm for a single-byte write.
 }
