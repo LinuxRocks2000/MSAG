@@ -6,21 +6,47 @@
 // This is the definition file for the outgoing protocol.
 
 #include <util/protocol/outgoing.hpp>
+protocol::outgoing::TestFrame::TestFrame(char* data) {
 void protocol::outgoing::TestFrame::load(char* buffer) {
 buffer[0] = 0;
 buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
 // This is very fast and makes life a lot easier.
-buffer[0] = uint64_t_TCHAR;
-buffer++;for (uint8_t i = 0; i < sizeof(uint64_t); i ++){buffer[i] = ((char*)&number)[i];}
-buffer += sizeof(uint64_t); // see above
-buffer[0] = uint64_t_TCHAR;
-buffer++;for (uint8_t i = 0; i < sizeof(uint64_t); i ++){buffer[i] = ((char*)&numbertwo)[i];}
-buffer += sizeof(uint64_t); // see above
-buffer[0] = int64_t_TCHAR;
-buffer++;for (uint8_t i = 0; i < sizeof(int64_t); i ++){buffer[i] = ((char*)&signedint)[i];}
-buffer += sizeof(int64_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&number)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&numbertwo)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(int32_t); i ++){buffer[i] = ((char*)&signedint)[i];}
+buffer += sizeof(int32_t); // see above
+buffer[0] = 's'; buffer ++;
+size_t size = letterz.size();
+if (size < 255) {
+    buffer[0] = size; buffer++;
+}
+else {
+    buffer[0] = 255;
+    buffer ++;
+    ((uint32_t*)&buffer)[0] = size;
+    buffer += 4;
+}
+for (size_t i = 0; i < size; i ++) {buffer[i] = letterz[i];}
+buffer += size;
+
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&floating)[i];}
+buffer += sizeof(float32_t); // see above
 }
 
 size_t protocol::outgoing::TestFrame::getSize() {
-return 4 + sizeof(uint64_t) + sizeof(uint64_t) + sizeof(int64_t);
+return 1 + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int32_t) + (letterz.size() + (letterz.size() < 255 ? 1 : 5)) + sizeof(float32_t);
+}
+protocol::outgoing::TestFrame2::TestFrame2(char* data) {
+void protocol::outgoing::TestFrame2::load(char* buffer) {
+buffer[0] = 1;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&number)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::outgoing::TestFrame2::getSize() {
+return 1 + sizeof(uint32_t);
 }

@@ -3,8 +3,6 @@
 #include <stdint.h>
 typedef float float32_t;
 typedef double float64_t;
-#define uint64_t_TCHAR 'U'
-#define int64_t_TCHAR 'I'
 
 // Core code for protocol frames.
 namespace protocol {

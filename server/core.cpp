@@ -17,6 +17,10 @@
 
 // also TODO: do all the license comments at the tops of files. really this project needs a *lot* of commenting.
 
+// WARNING: This application's network code is generally endianness-specific! The client will work anywhere numbers are sold, but the server is a bit pickier.
+// If the server isn't working, the FIRST THING YOU SHOULD DO is test endianness!
+
+
 #include <time.h>
 #include <cstdint>
 #include "util/net.hpp"
@@ -34,10 +38,12 @@ struct Handler {
         socket = m_socket;
         printf("Got websocket up\n");
         SocketSendBuffer sender(socket);
-        protocol::outgoing::TestFrame frame;
+        protocol::outgoing::TestFrame2 frame;
         frame.number = 9999999999;
-        frame.numbertwo = 42069;
+        /*frame.numbertwo = 42069;
         frame.signedint = -2;
+        frame.floating = 1.5;
+        frame.letterz = "Hello, World";*/
         frame.sendTo(&sender);
     }
 
@@ -64,6 +70,10 @@ struct Handler {
     }
 
     void gotWebsocketMessage(WebSocketFrame frame) {
+        uint8_t opcode = frame.payload[0];
+        if (opcode == 0) {
+            protocol::incoming::Init init(frame.payload.c_str() + 1);
+        }
     }
 };
 
