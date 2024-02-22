@@ -33,8 +33,13 @@
                 "opcode": 1,
                 "arguments": [
                     {
+                        "name": "text",
+                        "type": "string",
+                        "packing": "vector"
+                    },
+                    {
                         "name": "number",
-                        "type": "uint32_t"
+                        "type": "float32_t"
                     }
                 ]
             }
@@ -48,7 +53,12 @@
                 "arguments": [
                     {
                         "name": "number",
-                        "type": "uint32_t"
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "text",
+                        "type": "string",
+                        "packing": "vector"
                     }
                 ]
             }

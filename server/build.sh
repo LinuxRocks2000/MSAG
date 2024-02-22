@@ -5,6 +5,6 @@ cd util/protocol
 python3 setup.py
 cd ../../
 g++ --shared -fPIC map/test.cpp -o map/test.a -I. -g
-g++ -o server util/protocol/protocol.cpp util/protocol/outgoing.cpp util/*.cpp room.cpp game.cpp core.cpp -g -lpthread --std=c++20 -I.
+g++ -o server util/protocol/*.cpp util/*.cpp room.cpp game.cpp core.cpp -g -lpthread --std=c++20 -I.
 
 cp util/protocol/manifest.json ../client/

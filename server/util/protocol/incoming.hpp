@@ -9,8 +9,10 @@
 #include <util/protocol/protocol.hpp>
 namespace protocol::incoming {
 struct Init : ProtocolFrameBase {
-uint32_t number;
-Init(char* data);
+float32_t number;
+std::string text;
+Init(const char* data);
+Init();
 void load(char* buffer);
 size_t getSize();
 };

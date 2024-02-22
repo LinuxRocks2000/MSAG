@@ -10,21 +10,20 @@
 namespace protocol::outgoing {
 struct TestFrame : ProtocolFrameBase {
 uint32_t number;
-TestFrame(char* data);
 uint32_t numbertwo;
-TestFrame(char* data);
 int32_t signedint;
-TestFrame(char* data);
 std::string letterz;
-TestFrame(char* data);
 float32_t floating;
-TestFrame(char* data);
+TestFrame(const char* data);
+TestFrame();
 void load(char* buffer);
 size_t getSize();
 };
 struct TestFrame2 : ProtocolFrameBase {
-uint32_t number;
-TestFrame2(char* data);
+std::string text;
+float32_t number;
+TestFrame2(const char* data);
+TestFrame2();
 void load(char* buffer);
 size_t getSize();
 };

@@ -6,15 +6,39 @@
 // This is the definition file for the incoming protocol.
 
 #include <util/protocol/incoming.hpp>
-protocol::incoming::Init::Init(char* data) {
+protocol::incoming::Init::Init() {}
+protocol::incoming::Init::Init(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&number)[i] = data[i];
+}
+data += sizeof(float32_t);
+len = data[0]; data++;
+if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
+text.reserve(len);
+for (size_t i = 0; i < len; i ++) {text += data[i];}
+data += len;}
 void protocol::incoming::Init::load(char* buffer) {
 buffer[0] = 0;
 buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
 // This is very fast and makes life a lot easier.
-for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&number)[i];}
-buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&number)[i];}
+buffer += sizeof(float32_t); // see above
+size_t size = text.size();
+if (size < 255) {
+    buffer[0] = size; buffer++;
+}
+else {
+    buffer[0] = 255;
+    buffer ++;
+    ((uint32_t*)&buffer)[0] = size;
+    buffer += 4;
+}
+for (size_t i = 0; i < size; i ++) {buffer[i] = text[i];}
+buffer += size;
+
 }
 
 size_t protocol::incoming::Init::getSize() {
-return 1 + sizeof(uint32_t);
+return 1 + sizeof(float32_t) + (text.size() + (text.size() < 255 ? 1 : 5));
 }

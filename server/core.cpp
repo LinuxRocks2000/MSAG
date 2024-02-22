@@ -29,6 +29,7 @@
 #include "space.hpp"
 #include "util/util.hpp"
 #include <util/protocol/outgoing.hpp>
+#include <util/protocol/incoming.hpp>
 
 
 struct Handler {
@@ -37,14 +38,6 @@ struct Handler {
     void onWebsocketUp(uint64_t id, int m_socket) {
         socket = m_socket;
         printf("Got websocket up\n");
-        SocketSendBuffer sender(socket);
-        protocol::outgoing::TestFrame2 frame;
-        frame.number = 9999999999;
-        /*frame.numbertwo = 42069;
-        frame.signedint = -2;
-        frame.floating = 1.5;
-        frame.letterz = "Hello, World";*/
-        frame.sendTo(&sender);
     }
 
     void httpRequest(HTTPRequest request, HTTPResponse* response) {
@@ -73,7 +66,13 @@ struct Handler {
         uint8_t opcode = frame.payload[0];
         if (opcode == 0) {
             protocol::incoming::Init init(frame.payload.c_str() + 1);
+            printf("Le text we gotzed from ze client eez %s\n", init.text.c_str());
         }
+        SocketSendBuffer sender(socket);
+        protocol::outgoing::TestFrame2 send;
+        send.text = "hello";
+        send.number = 2.375;
+        send.sendTo(&sender);
     }
 };
 

@@ -26,7 +26,7 @@ const lexicon = {
             view.setUint32(0, data);
             var ret = [];
             for (var i = 0; i < 4; i++) {
-                ret.push(view.getUint8(i));
+                ret.push(view.getUint8(3 - i));
             }
             return ret;
         },
@@ -37,80 +37,102 @@ const lexicon = {
             }
             return ret;
         }
+    },
+    "float32_t": {
+        encode(data) {
+            var buf = new ArrayBuffer(4);
+            var view = new DataView(buf);
+            view.setFloat32(0, data);
+            var ret = [];
+            for (var i = 0; i < 4; i++) {
+                ret.push(view.getUint8(3 - i));
+            }
+            return ret;
+        },
+        decode(data) {
+            var buf = new ArrayBuffer(4);
+            var view = new DataView(buf);
+            for (var i = 0; i < 4; i++) {
+                view.setUint8(3 - i, data.popByte());
+            }
+            return view.getFloat32(0);
+        }
+    },
+    "string": {
+        encode(string) {
+            var data = new TextEncoder("utf-8").encode(string);
+            console.log(data);
+            var ret = [];
+            if (data.length >= 255) {
+                ret.push(255);
+                for (var i = 0; i < 4; i++) { // TODO: make sure this actually encodes the right size
+                    ret.push(Math.round(data.length / (256 ** i)) % 256);
+                }
+            }
+            else {
+                ret.push(data.length);
+            }
+            for (var i = 0; i < data.length; i++) {
+                ret.push(data[i]);
+            }
+            return ret;
+        },
+        decode(data) {
+            var len = data.popByte();
+            if (len == 255) {
+                len = 0;
+                for (var i = 0; i < 4; i++) {
+                    len += data.popByte() * (256 ** i);
+                }
+            }
+            var ret = new Uint8Array(len);
+            for (var i = 0; i < len; i++) {
+                ret[i] = data.popByte();
+            }
+            let decoder = new TextDecoder("utf-8");
+            return decoder.decode(ret);
+        }
     }
 };
 
 
 class ProtocolConnection {
-    constructor(url) {
+    constructor(url, onopen) {
         this.socket = new WebSocket(url);
         this.manifest = {};
+        this.listeningProtocols = [];
         this.opened = false;
-        this.onopen = () => { };
         this.socket.addEventListener("open", () => {
-            this.onopen();
-        });/*
+            onopen();
+        });
         this.socket.addEventListener("message", (evt) => {
             evt.data.arrayBuffer().then(d => {
                 var view = new Uint8Array(d);
                 var c = new Cursor(view);
                 var opcode = c.popByte();
-                var params = []; // todo: preallocate somehow
-                while (!c.empty()) {
-                    var type = String.fromCharCode(c.popByte());
-                    if (type == 's') {
-                        var len = c.popByte();
-                        if (len == 255) {
-                            len = 0;
-                            for (var x = 0; x < 4; x++) {
-                                len *= 256;
-                                len += c.popByte();
+                this.listeningProtocols.forEach(protocol => {
+                    this.manifest[protocol].formats.forEach(format => {
+                        if (format.opcode == opcode) {
+                            if (format.handlers) {
+                                // NOTE: since there's no cursor rewind, this won't work if handlers are defined across protocols. This might cause problems later.
+                                // TODO: cursor rewinds and/or sane(r) protocol handling.
+                                var params = {}; // this is a JS object, it mirrors the argument definitions in the manifest
+                                format.arguments.forEach(arg => {
+                                    params[arg.name] = lexicon[arg.type].decode(c);
+                                });
+                                format.handlers.forEach(handler => {
+                                    handler(params);
+                                });
                             }
                         }
-                        var str = "";
-                        for (var i = 0; i < len; i++) {
-                            str += String.fromCharCode(c.popByte());
-                        }
-                        params.push(str);
-                    }
-                    else if (type == 'U') {
-                        var r = 0;
-                        for (var i = 0; i < 8; i++) {
-                            r += c.popByte() * (256 ** i);
-                        }
-                        params.push(r);
-                    }
-                    else if (type == 'I') {
-                        var data = [];
-                        for (var i = 0; i < 8; i++) { // TODO: make this less inefficient
-                            data.push(c.popByte());
-                        }
-                        var r = data[7];
-                        if (r > 127) {
-                            r -= 256;
-                        }
-                        for (var i = 6; i >= 0; i--) {
-                            r *= 256;
-                            r += data[i];
-                        }
-                        params.push(r);
-                    }
-                    else if (type == 'F') {
-                        var buf = new ArrayBuffer(8);
-                        var view = new DataView(buf);
-                        for (var i = 0; i < 8; i++) {
-                            view.setUint8(8 - i - 1, c.popByte());
-                        }
-                        console.log(view.getFloat64(0));
-                    }
-                }
-                console.log(params);
+                    });
+                });
             });
-        });*/
+        });
     }
 
     async loadManifest(manifestURL) {
-        this.manifest = await (await fetch(manifestURL)).json();
+        this.manifest = await (await fetch(manifestURL, {cache: "no-store"})).json();
     }
 
     sendHandle(protocol, name) {
@@ -128,11 +150,29 @@ class ProtocolConnection {
             }
         }
     }
+
+    onMessage(protocol, name, handler) {
+        for (var i = 0; i < this.manifest[protocol].formats.length; i++) {
+            if (this.manifest[protocol].formats[i].className == name) {
+                if (!this.manifest[protocol].formats[i].handlers) {
+                    this.manifest[protocol].formats[i].handlers = [];
+                }
+                this.manifest[protocol].formats[i].handlers.push(handler);
+            }
+        }
+        if (this.listeningProtocols.indexOf(protocol) == -1) {
+            this.listeningProtocols.push(protocol);
+        }
+    }
 }
 
-var p = new ProtocolConnection('ws://localhost:3001/game');
-p.loadManifest('manifest.json').then(() => {
-    console.log("manifest up: time to do other stuff!");
-    var initSender = p.sendHandle("incoming", "Init"); // TODO: fix the protocol names (change from outgoing and incoming to s2c and c2s)
-    initSender(45);
+var p = new ProtocolConnection('ws://localhost:3001/game', () => {
+    p.loadManifest('manifest.json').then(() => {
+        p.onMessage("outgoing", "TestFrame2", () => {
+            console.log("HI");
+        });
+        console.log("manifest up: time to do other stuff!");
+        var initSender = p.sendHandle("incoming", "Init"); // TODO: fix the protocol names (change from outgoing and incoming to s2c and c2s)
+        initSender(1.375, "hello");
+    });
 });
