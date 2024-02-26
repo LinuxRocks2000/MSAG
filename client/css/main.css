@@ -1,0 +1,21 @@
+* {
+    margin: 0px;
+    padding: 0px;
+}
+
+p {
+    margin-right: 15%;
+    margin-left: 15%;
+}
+
+h1, h2, h3 {
+    text-align: center;
+}
+
+#main {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100vw;
+    height: 100vh;
+}

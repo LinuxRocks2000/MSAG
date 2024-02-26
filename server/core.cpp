@@ -20,7 +20,6 @@
 // WARNING: This application's network code is generally endianness-specific! The client will work anywhere numbers are sold, but the server is a bit pickier.
 // If the server isn't working, the FIRST THING YOU SHOULD DO is test endianness!
 
-
 #include <time.h>
 #include <cstdint>
 #include "util/net.hpp"
@@ -30,9 +29,26 @@
 #include "util/util.hpp"
 #include <util/protocol/outgoing.hpp>
 #include <util/protocol/incoming.hpp>
+#include <player.hpp>
+
+
+void loadSpaceTo(std::shared_ptr<Space> space, int socket) { // TODO: make this a member function of Space (after making space.hpp and space.cpp separate)
+    protocol::outgoing::SpaceSet s;
+    s.spaceID = space -> spaceID;
+    s.spaceWidth = space -> width;
+    s.spaceHeight = space -> height;
+    s.sendTo(socket);
+}
 
 
 struct Handler {
+    Game* game;
+    Player* cPlayer;
+
+    Handler(Game* argument) : game{argument} {
+
+    }
+
     int socket;
 
     void onWebsocketUp(uint64_t id, int m_socket) {
@@ -64,15 +80,56 @@ struct Handler {
 
     void gotWebsocketMessage(WebSocketFrame frame) {
         uint8_t opcode = frame.payload[0];
-        if (opcode == 0) {
-            protocol::incoming::Init init(frame.payload.c_str() + 1);
-            printf("Le text we gotzed from ze client eez %s\n", init.text.c_str());
+        const char* databuf = frame.payload.c_str() + 1;
+        if (opcode == protocol::incoming::Init::opcode) { // no reason to unload the data buffer, Init has no data
+            printf("Client init. Let's welcome them!");
+            protocol::outgoing::Welcome welcome;
+            welcome.sendTo(socket);
         }
-        SocketSendBuffer sender(socket);
-        protocol::outgoing::TestFrame2 send;
-        send.text = "hello";
-        send.number = 2.375;
-        send.sendTo(&sender);
+        else if (opcode == protocol::incoming::RoomCreate::opcode) {
+            protocol::incoming::RoomCreate message(databuf);
+            auto room = std::shared_ptr<Room>(new Room(game, ("map/" + message.mapName).c_str(), message.roomName)); // TODO: error handling. seriously.
+            // TODO: make it so the user doesn't manually specify a map file, just puts in a map name and the program sanitizes it and converts it to map filename
+            // (and checks if it does, in fact, exist)
+            room -> creator = message.creator; // TODO: collision checks (to avoid creator-check crossovers)
+            game -> pushRoom(room);
+            protocol::outgoing::RoomCreated output;
+            output.roomid = room -> id;
+            output.creator = message.creator; // TODO: collision checks (to avoid creator-check crossovers)
+            output.sendTo(socket);
+        }
+        else if (opcode == protocol::incoming::RoomJoin::opcode) {
+            protocol::incoming::RoomJoin message(databuf);
+            Player p; // create a new player instance
+            p.id = message.playerID;
+            printf("Created new %u\n", p.id);
+            p.name = message.playerName;
+            for (size_t i = 0; i < game -> rooms.size(); i ++) {
+                if (game -> rooms[i] -> id == message.roomid) { // we've found the room they wanna join, let's do the thing!
+                    p.shape.x = game -> rooms[i] -> mSpaces[0] -> defaultX;
+                    p.shape.y = game -> rooms[i] -> mSpaces[0] -> defaultY;
+                    p.currentSpace = game -> rooms[i] -> mSpaces[0];
+                    game -> rooms[i] -> mSpaces[0] -> addPlayer(p); // the mSpaces dimension contains a referential map to the spaces array in Game
+                    // this is an overly fancy way to say "wow, we can search in two ways rather than just one!"
+                }
+            }
+        }
+        else if (opcode == protocol::incoming::RoomConnect::opcode) {
+            protocol::incoming::RoomConnect message(databuf);
+            cPlayer = game -> playerSearch(message.playerID);
+            if (cPlayer != nullptr) {
+                cPlayer -> active = true;
+                cPlayer -> currentSpace -> playerCount ++;
+                loadSpaceTo(cPlayer -> currentSpace, socket);
+                protocol::outgoing::IdSet m; // link up the player with the player object in the space
+                m.objectID = cPlayer -> spaceID;
+                m.sendTo(socket);
+                printf("Player connect %u\n", message.playerID);
+            }
+            else {
+                printf("nonexistent player connect %u?\n", message.playerID);
+            }
+        }
     }
 };
 
@@ -80,7 +137,7 @@ struct Handler {
 int main() {
     NetworkServer<Handler, Game> ns(3001);
     Game game;
-    ns.spawnOff(16, &game);
-    game.spawnOff(2);
+    ns.spawnOff(8, &game);
+    game.spawnOff(7);
     game.block();
 }

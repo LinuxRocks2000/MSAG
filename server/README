@@ -13,14 +13,4 @@ Everything else is controlled by the REST API or websocket commands.
 
 The API is not restful, it's handled with WebSocket connections. I didn't want to deal with cookies. Shoot me. Just websocket connect to /game.
 
-It uses the same data-compact spec as MMOSG. 
-Frames start with a 1-byte operation code, and then immediately continue into data. String data is encoded with a 1-byte length code. If strlen == 255, parse the next four bytes as the string length. This way most strings will be stored without wasted space, and large strings will have pre-known length (rather than NULL termination or the like). Strings are expected to be UTF-8 encoded. All number types are encoded directly in big-endian. 
-
-There is no formal manifest at the moment. When I do eventually set one up, it'll probably be a compact list of signal names, signal numbers (in hex, so the size is predictably two bytes), signal definitions, and some spacing. Assuming the spacing is a literal space, it'll thus look like:
-`ObjectMove;00u4v2 ObjectResize;01u4f4f4 ChatMessage;02u4ss`
-where `v2` is a 2-dimensional vector, `u4` is a 32-bit (4 byte) int (for object IDs), `ss` is a variable-length string, and `f4` is a 32-bit (4 byte) float. At the moment,
-you can figure out the manifest from protocol calls (see protocol.hpp).
-
-Messages coming *from* the client work the same way, but have different definitions.
-
-TODO: formal manifest
+// TODO: error handling. all over. there's no error handling right now and that's bad.

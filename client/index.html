@@ -3,6 +3,7 @@
 <html>
     <head>
         <title>Multiplayer Survival Adventure Game</title>
+        <link rel="stylesheet" href="css/main.css">
     </head>
     <body>
         <h1>Multiplayer Survival Adventure Game</h1>
@@ -11,9 +12,11 @@
             with the original.
         </p>
         <p>
-            It's party-based, every party has their own room. <button id="create-party">Click me to create a new room</button>.
-            If you got a game link already, don't bother with this page - go directly to that link. If you can't figure out how to use a link,
-            you shouldn't be playing this game.
+            It's party-based, every party has their own room. To create a room, put the name in this box: <input type="text" id="newroomname">, the map in this box: <input type="text" id="newroommapname">, and <button id="create-room">click me</button>. You'll
+            get a game ID that you can give to other people so they can join your room.<br>
+            If you got a game ID to join, put it in this box: <input type="text" id="joinID">, put a handle in this box: <input type="text" id="handle"> and <button id="join-room">join the room!</button><br>
+            If you have already joined a room and have a client ID, paste it in here: <input type="text" id="connectID"> (if it's autofilled, it contains the number of the last
+            game you connected to; this may not be the correct one if you're playing several games) and <button id="connect">click here!</button>
         </p>
         <p>
             this front page is temporary. if you're seeing it, yell at Tyler (LinuxRocks2000) or 1000D or somebody to improve it (or improve it yourself - it's free and open source
@@ -25,6 +28,7 @@
         <p>
             This Multiplayer Survival Adventure Game client is protected by the GNU GPLv3 license.
         </p>
+        <canvas id="main" style="display: none;">Your Browser Supports No Canvas Please!</canvas>
         <script type="application/json" src="manifest.json" id="manifest"></script>
         <script src="js/protocol.js" type="text/javascript"></script>
         <script src="js/main.js" type="text/javascript"></script>

@@ -8,6 +8,7 @@
     If you're lookin' to contribute, just ctrl+F for the word "TODO". There's a *lot* of TODO. Seriously. If your only contribution to the file is
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
+// TODO: separate into a header and a definition (because eventually we're going to need to do makefile)
 #pragma once
 
 #define GROUND_TYPE_SOIL  0 // The simplest ground type. You can walk on it fine, and garden on it find. It has no special behaviors. Holds water.
@@ -21,6 +22,7 @@
 #include "util/rect.hpp"
 #include <mutex>
 #include <vector>
+#include <player.hpp>
 struct Room; // forward-dec. BIG, BIG TODO: Make this a proper Makefile project with separate header files and definitions! Will save us a LOT of pain!
 
 
@@ -31,6 +33,8 @@ struct Ground { // all ground types are stored in this struct. It's slightly mor
     float gardenPotential; // How easy it is to garden on this. 0 = perfect soil, 1 = not gardenable.
 
     int type; // see above
+
+    uint32_t spaceID; // ID of this object within the space
 
     // Everything can always move over ground. It doesn't obstruct.
     
@@ -59,6 +63,14 @@ struct Space {
     uint32_t spaceID; // the id of this space inside its room.
     float width; // should never be too excessive.
     float height;
+    float defaultX = 100.0; // default spawn position. This will usually be over a White Block, a type of obstruction specifically meant to aid spawning players.
+    float defaultY = 100.0;
+    uint16_t playerCount = 0; // the number of ACTIVE players in this space. A player is active if these conditions are satisfied:
+    /* 
+        1. it is currently connected
+        2. it is alive (ghosts will witness the room-freeze, yes)
+    */
+    // When playerCount is 0, the space will no longer receive updates.
 
     Room* room;
     std::mutex mutex; // For the Space-manager threads to lock spaces and then run them.
@@ -66,6 +78,17 @@ struct Space {
     uint64_t updateTime; // in milliseconds. if current time is ever more than or equal to update time, update and increment updateTime by 1000/SPEED.
 
     std::vector<Ground> groundLayer;
+
+    // Since Players require a number of special routines and have special requirements and optimizations (like Ground), they have a separate vector.
+
+    std::vector<Player> players;
+
+    uint32_t topSpaceID = 0; // ids of things actually inside this space
+    
+    uint32_t allocateID() {
+        topSpaceID ++;
+        return topSpaceID - 1;
+    }
 
     Space(float w, float h) {
         spaceID = 0;
@@ -77,7 +100,12 @@ struct Space {
         groundLayer.push_back(g);
     }
 
+    void addPlayer(Player p) {
+        p.spaceID = allocateID();
+        players.push_back(p);
+    }
+
     void update() {
-        printf("%d got updated!\n", spaceID);
+        //printf("%d got updated!\n", spaceID);
     }
 };

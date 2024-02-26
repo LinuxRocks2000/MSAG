@@ -9,10 +9,37 @@
 #include <util/protocol/protocol.hpp>
 namespace protocol::incoming {
 struct Init : ProtocolFrameBase {
-float32_t number;
-std::string text;
+static uint8_t opcode;
 Init(const char* data);
 Init();
+void load(char* buffer);
+size_t getSize();
+};
+struct RoomCreate : ProtocolFrameBase {
+static uint8_t opcode;
+std::string roomName;
+std::string mapName;
+uint32_t creator;
+RoomCreate(const char* data);
+RoomCreate();
+void load(char* buffer);
+size_t getSize();
+};
+struct RoomJoin : ProtocolFrameBase {
+static uint8_t opcode;
+std::string playerName;
+uint32_t playerID;
+uint32_t roomid;
+RoomJoin(const char* data);
+RoomJoin();
+void load(char* buffer);
+size_t getSize();
+};
+struct RoomConnect : ProtocolFrameBase {
+static uint8_t opcode;
+uint32_t playerID;
+RoomConnect(const char* data);
+RoomConnect();
 void load(char* buffer);
 size_t getSize();
 };

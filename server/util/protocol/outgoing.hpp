@@ -9,6 +9,7 @@
 #include <util/protocol/protocol.hpp>
 namespace protocol::outgoing {
 struct TestFrame : ProtocolFrameBase {
+static uint8_t opcode;
 uint32_t number;
 uint32_t numbertwo;
 int32_t signedint;
@@ -19,11 +20,37 @@ TestFrame();
 void load(char* buffer);
 size_t getSize();
 };
-struct TestFrame2 : ProtocolFrameBase {
-std::string text;
-float32_t number;
-TestFrame2(const char* data);
-TestFrame2();
+struct Welcome : ProtocolFrameBase {
+static uint8_t opcode;
+Welcome(const char* data);
+Welcome();
+void load(char* buffer);
+size_t getSize();
+};
+struct RoomCreated : ProtocolFrameBase {
+static uint8_t opcode;
+uint32_t creator;
+uint32_t roomid;
+RoomCreated(const char* data);
+RoomCreated();
+void load(char* buffer);
+size_t getSize();
+};
+struct SpaceSet : ProtocolFrameBase {
+static uint8_t opcode;
+uint32_t spaceID;
+float32_t spaceWidth;
+float32_t spaceHeight;
+SpaceSet(const char* data);
+SpaceSet();
+void load(char* buffer);
+size_t getSize();
+};
+struct IdSet : ProtocolFrameBase {
+static uint8_t opcode;
+uint32_t objectID;
+IdSet(const char* data);
+IdSet();
 void load(char* buffer);
 size_t getSize();
 };

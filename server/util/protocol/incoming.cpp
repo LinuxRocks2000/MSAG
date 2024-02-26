@@ -7,24 +7,43 @@
 
 #include <util/protocol/incoming.hpp>
 protocol::incoming::Init::Init() {}
+uint8_t protocol::incoming::Init::Init::opcode = 0;
 protocol::incoming::Init::Init(const char* data) {
 size_t len;
-for (size_t i = 0; i < sizeof(float32_t); i ++) {
-((char*)&number)[i] = data[i];
 }
-data += sizeof(float32_t);
-len = data[0]; data++;
-if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
-text.reserve(len);
-for (size_t i = 0; i < len; i ++) {text += data[i];}
-data += len;}
 void protocol::incoming::Init::load(char* buffer) {
+size_t size;
 buffer[0] = 0;
 buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
 // This is very fast and makes life a lot easier.
-for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&number)[i];}
-buffer += sizeof(float32_t); // see above
-size_t size = text.size();
+}
+
+size_t protocol::incoming::Init::getSize() {
+return 1;
+}
+protocol::incoming::RoomCreate::RoomCreate() {}
+uint8_t protocol::incoming::RoomCreate::RoomCreate::opcode = 1;
+protocol::incoming::RoomCreate::RoomCreate(const char* data) {
+size_t len;
+len = data[0]; data++;
+if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
+roomName.reserve(len);
+for (size_t i = 0; i < len; i ++) {roomName += data[i];}
+data += len;len = data[0]; data++;
+if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
+mapName.reserve(len);
+for (size_t i = 0; i < len; i ++) {mapName += data[i];}
+data += len;for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&creator)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::incoming::RoomCreate::load(char* buffer) {
+size_t size;
+buffer[0] = 1;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+size = roomName.size();
 if (size < 255) {
     buffer[0] = size; buffer++;
 }
@@ -34,11 +53,91 @@ else {
     ((uint32_t*)&buffer)[0] = size;
     buffer += 4;
 }
-for (size_t i = 0; i < size; i ++) {buffer[i] = text[i];}
+for (size_t i = 0; i < size; i ++) {buffer[i] = roomName[i];}
 buffer += size;
 
+size = mapName.size();
+if (size < 255) {
+    buffer[0] = size; buffer++;
+}
+else {
+    buffer[0] = 255;
+    buffer ++;
+    ((uint32_t*)&buffer)[0] = size;
+    buffer += 4;
+}
+for (size_t i = 0; i < size; i ++) {buffer[i] = mapName[i];}
+buffer += size;
+
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&creator)[i];}
+buffer += sizeof(uint32_t); // see above
 }
 
-size_t protocol::incoming::Init::getSize() {
-return 1 + sizeof(float32_t) + (text.size() + (text.size() < 255 ? 1 : 5));
+size_t protocol::incoming::RoomCreate::getSize() {
+return 1 + (roomName.size() + (roomName.size() < 255 ? 1 : 5)) + (mapName.size() + (mapName.size() < 255 ? 1 : 5)) + sizeof(uint32_t);
+}
+protocol::incoming::RoomJoin::RoomJoin() {}
+uint8_t protocol::incoming::RoomJoin::RoomJoin::opcode = 2;
+protocol::incoming::RoomJoin::RoomJoin(const char* data) {
+size_t len;
+len = data[0]; data++;
+if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
+playerName.reserve(len);
+for (size_t i = 0; i < len; i ++) {playerName += data[i];}
+data += len;for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&playerID)[i] = data[i];
+}
+data += sizeof(uint32_t);
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&roomid)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::incoming::RoomJoin::load(char* buffer) {
+size_t size;
+buffer[0] = 2;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+size = playerName.size();
+if (size < 255) {
+    buffer[0] = size; buffer++;
+}
+else {
+    buffer[0] = 255;
+    buffer ++;
+    ((uint32_t*)&buffer)[0] = size;
+    buffer += 4;
+}
+for (size_t i = 0; i < size; i ++) {buffer[i] = playerName[i];}
+buffer += size;
+
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&playerID)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&roomid)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::incoming::RoomJoin::getSize() {
+return 1 + (playerName.size() + (playerName.size() < 255 ? 1 : 5)) + sizeof(uint32_t) + sizeof(uint32_t);
+}
+protocol::incoming::RoomConnect::RoomConnect() {}
+uint8_t protocol::incoming::RoomConnect::RoomConnect::opcode = 3;
+protocol::incoming::RoomConnect::RoomConnect(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&playerID)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::incoming::RoomConnect::load(char* buffer) {
+size_t size;
+buffer[0] = 3;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&playerID)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::incoming::RoomConnect::getSize() {
+return 1 + sizeof(uint32_t);
 }

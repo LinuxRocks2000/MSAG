@@ -38,7 +38,9 @@ void* Game::child(void* _me) {
         uint64_t soonest = cTime + 10000; // just something ridiculously unreasonable, ten seconds in the future
         for (size_t i = 0; i < localSpaces.size(); i ++) {
             if (cTime >= localSpaces[i] -> updateTime && localSpaces[i] -> mutex.try_lock()) {
-                localSpaces[i] -> update();
+                if (localSpaces[i] -> playerCount > 0) { // don't do expensive update tasks if there's nobody to experience them, just increment the counter
+                    localSpaces[i] -> update();
+                }
                 localSpaces[i] -> updateTime += 1000 / SPEED;
                 if (localSpaces[i] -> updateTime < soonest) {
                     soonest = localSpaces[i] -> updateTime;
@@ -73,4 +75,24 @@ void Game::spawnOff(int tCount) { // spawn threads
 
 void Game::block() { // run the worker thread on wherever this is called, blocking that thread permanently
     child((void*)this);
+}
+
+void Game::pushRoom(std::shared_ptr<Room> room) {
+    // TODO: mutex (is a mutex necessary?)
+    room -> id = topRoomId;
+    topRoomId ++;
+    rooms.push_back(room);
+}
+
+Player* Game::playerSearch(uint32_t id) { // TODO: search the frozen spaces and raise rooms for players
+    dataEdit.lock();
+    for (size_t i = 0; i < spaces.size(); i ++) {
+        for (size_t j = 0; j < spaces[i] -> players.size(); j ++) {
+            if (spaces[i] -> players[j].id == id) {
+                return &(spaces[i] -> players[j]);
+            }
+        }
+    }
+    dataEdit.unlock();
+    return NULL;
 }

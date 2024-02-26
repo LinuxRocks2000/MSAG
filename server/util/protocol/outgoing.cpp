@@ -7,6 +7,7 @@
 
 #include <util/protocol/outgoing.hpp>
 protocol::outgoing::TestFrame::TestFrame() {}
+uint8_t protocol::outgoing::TestFrame::TestFrame::opcode = 0;
 protocol::outgoing::TestFrame::TestFrame(const char* data) {
 size_t len;
 for (size_t i = 0; i < sizeof(uint32_t); i ++) {
@@ -31,6 +32,7 @@ data += len;for (size_t i = 0; i < sizeof(float32_t); i ++) {
 data += sizeof(float32_t);
 }
 void protocol::outgoing::TestFrame::load(char* buffer) {
+size_t size;
 buffer[0] = 0;
 buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
 // This is very fast and makes life a lot easier.
@@ -40,7 +42,7 @@ for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&numbertwo)[
 buffer += sizeof(uint32_t); // see above
 for (uint8_t i = 0; i < sizeof(int32_t); i ++){buffer[i] = ((char*)&signedint)[i];}
 buffer += sizeof(int32_t); // see above
-size_t size = letterz.size();
+size = letterz.size();
 if (size < 255) {
     buffer[0] = size; buffer++;
 }
@@ -60,39 +62,99 @@ buffer += sizeof(float32_t); // see above
 size_t protocol::outgoing::TestFrame::getSize() {
 return 1 + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(int32_t) + (letterz.size() + (letterz.size() < 255 ? 1 : 5)) + sizeof(float32_t);
 }
-protocol::outgoing::TestFrame2::TestFrame2() {}
-protocol::outgoing::TestFrame2::TestFrame2(const char* data) {
+protocol::outgoing::Welcome::Welcome() {}
+uint8_t protocol::outgoing::Welcome::Welcome::opcode = 1;
+protocol::outgoing::Welcome::Welcome(const char* data) {
 size_t len;
-len = data[0]; data++;
-if (len == 255) {len = ((uint32_t*)&data)[0]; data += 4;}
-text.reserve(len);
-for (size_t i = 0; i < len; i ++) {text += data[i];}
-data += len;for (size_t i = 0; i < sizeof(float32_t); i ++) {
-((char*)&number)[i] = data[i];
 }
-data += sizeof(float32_t);
-}
-void protocol::outgoing::TestFrame2::load(char* buffer) {
+void protocol::outgoing::Welcome::load(char* buffer) {
+size_t size;
 buffer[0] = 1;
 buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
 // This is very fast and makes life a lot easier.
-size_t size = text.size();
-if (size < 255) {
-    buffer[0] = size; buffer++;
 }
-else {
-    buffer[0] = 255;
-    buffer ++;
-    ((uint32_t*)&buffer)[0] = size;
-    buffer += 4;
-}
-for (size_t i = 0; i < size; i ++) {buffer[i] = text[i];}
-buffer += size;
 
-for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&number)[i];}
+size_t protocol::outgoing::Welcome::getSize() {
+return 1;
+}
+protocol::outgoing::RoomCreated::RoomCreated() {}
+uint8_t protocol::outgoing::RoomCreated::RoomCreated::opcode = 2;
+protocol::outgoing::RoomCreated::RoomCreated(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&creator)[i] = data[i];
+}
+data += sizeof(uint32_t);
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&roomid)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::outgoing::RoomCreated::load(char* buffer) {
+size_t size;
+buffer[0] = 2;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&creator)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&roomid)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::outgoing::RoomCreated::getSize() {
+return 1 + sizeof(uint32_t) + sizeof(uint32_t);
+}
+protocol::outgoing::SpaceSet::SpaceSet() {}
+uint8_t protocol::outgoing::SpaceSet::SpaceSet::opcode = 3;
+protocol::outgoing::SpaceSet::SpaceSet(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&spaceID)[i] = data[i];
+}
+data += sizeof(uint32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&spaceWidth)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&spaceHeight)[i] = data[i];
+}
+data += sizeof(float32_t);
+}
+void protocol::outgoing::SpaceSet::load(char* buffer) {
+size_t size;
+buffer[0] = 3;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&spaceID)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&spaceWidth)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&spaceHeight)[i];}
 buffer += sizeof(float32_t); // see above
 }
 
-size_t protocol::outgoing::TestFrame2::getSize() {
-return 1 + (text.size() + (text.size() < 255 ? 1 : 5)) + sizeof(float32_t);
+size_t protocol::outgoing::SpaceSet::getSize() {
+return 1 + sizeof(uint32_t) + sizeof(float32_t) + sizeof(float32_t);
+}
+protocol::outgoing::IdSet::IdSet() {}
+uint8_t protocol::outgoing::IdSet::IdSet::opcode = 4;
+protocol::outgoing::IdSet::IdSet(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&objectID)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::outgoing::IdSet::load(char* buffer) {
+size_t size;
+buffer[0] = 4;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&objectID)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::outgoing::IdSet::getSize() {
+return 1 + sizeof(uint32_t);
 }

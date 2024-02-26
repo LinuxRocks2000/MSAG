@@ -18,6 +18,7 @@
 #include <memory>
 #include "space.hpp"
 #include "room.hpp"
+#include <player.hpp>
 
 
 struct Game {
@@ -25,13 +26,18 @@ struct Game {
     std::vector<std::shared_ptr<Room>> rooms;
     std::atomic<uint64_t> dataAge = 0;
     std::mutex dataEdit;
+    uint32_t topRoomId = 0;
     uint64_t updateStagger = 0;
 
     static void* child(void* _me); // Worker thread
 
-    void pushSpace(std::shared_ptr<Space> space); // Push a new space into this Room
+    void pushSpace(std::shared_ptr<Space> space); // Push a new space into this game
+
+    void pushRoom(std::shared_ptr<Room> room); // Push a new Room into this game
 
     void spawnOff(int tCount); // spawn threads
 
     void block(); // run the worker thread on wherever this is called, blocking that thread permanently
+
+    Player* playerSearch(uint32_t id); // Searches for a player instance and returns a pointer. If the player is in a frozen Space, raise the space before returning.
 };

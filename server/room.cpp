@@ -14,7 +14,7 @@
 #include <game.hpp>
 
 
-Room::Room(Game* g, const char* mapFile) { // it requires a game and a shared object file. TODO: add an implementation where a Room can load from a Game and
+Room::Room(Game* g, const char* mapFile, std::string n) { // it requires a game and a shared object file. TODO: add an implementation where a Room can load from a Game and
     // a roomsave file (maybe with a defaulted bool in this function?)
     game = g;
     handle = dlopen(mapFile, RTLD_LAZY | RTLD_NOW); // TODO: check the dlopen flags in detail; we might be missing something useful!
@@ -25,6 +25,7 @@ Room::Room(Game* g, const char* mapFile) { // it requires a game and a shared ob
         return;
     }
     mapFn(this);
+    name = n;
 }
 
 extern "C" {

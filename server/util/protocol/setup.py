@@ -36,7 +36,7 @@ for key in manifest.keys():
     source.write("\n// This is the definition file for the " + key + " protocol.\n\n#include <util/protocol/" + key + ".hpp>\n")
     header.write("#pragma once\n#include <util/protocol/protocol.hpp>\nnamespace protocol::" + key + " {\n")
     for form in manifest[key]["formats"]:
-        header.write("struct " + form["className"] + " : ProtocolFrameBase {\n")
+        header.write("struct " + form["className"] + " : ProtocolFrameBase {\nstatic uint8_t opcode;\n")
         for argument in form["arguments"]:
             if not "packing" in argument:
                 argument["packing"] = "static"
@@ -47,6 +47,7 @@ for key in manifest.keys():
         header.write("};\n")
         # constructor
         source.write("protocol::" + key + "::" + form["className"] + "::" + form["className"] + "() {}\n")
+        source.write("uint8_t protocol::" + key + "::" + form["className"] + "::" + form["className"] + "::opcode = " + str(form["opcode"]) + ";\n")
         source.write("protocol::" + key + "::" + form["className"] + "::" + form["className"] + "(const char* data) {\nsize_t len;\n")
         for argument in form["arguments"]:
             if argument["packing"] == "static":
@@ -57,7 +58,7 @@ for key in manifest.keys():
                 source.write("data += len;")
         source.write("}\n")
         # load function
-        source.write("void protocol::" + key + "::" + form["className"] + "::load(char* buffer) {\n")
+        source.write("void protocol::" + key + "::" + form["className"] + "::load(char* buffer) {\nsize_t size;\n")
         source.write("buffer[0] = " + str(form["opcode"]) + ";\nbuffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.\n// This is very fast and makes life a lot easier.\n")
         for argument in form["arguments"]:
             if argument["packing"] == "static":
@@ -65,7 +66,7 @@ for key in manifest.keys():
                 source.write("buffer += sizeof(" + argument["type"] + "); // see above\n")
             elif argument["packing"] == "vector":
                 if argument["type"] == "string":
-                    source.write("""size_t size = """ + argument["name"] + """.size();
+                    source.write("""size = """ + argument["name"] + """.size();
 if (size < 255) {
     buffer[0] = size; buffer++;
 }

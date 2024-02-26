@@ -14,3 +14,8 @@ void protocol::ProtocolFrameBase::sendTo(SocketSendBuffer<>* sendBuffer) {
     WebSocketFrame f {std::string {buf, getSize()}}; // TODO: make this not do the stupid allocation
     f.sendTo(sendBuffer);
 }
+
+void protocol::ProtocolFrameBase::sendTo(int socket) {
+    SocketSendBuffer<> buffer (socket);
+    sendTo(&buffer);
+}

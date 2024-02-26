@@ -404,7 +404,7 @@ struct ClientInternal {
     std::string headerName;
     uint64_t id;
 
-    ClientInternal(int sock, uint64_t ident) {
+    ClientInternal(int sock, uint64_t ident, DataArgument* argument) : handler(argument) {
         socket = sock;
         id = ident;
     }
@@ -788,7 +788,7 @@ public:
                                 .revents = 0
                             });
                             self -> masterAge ++;
-                            ClientInternal<ClientHandler, DataArgument>* clientObj = new ClientInternal<ClientHandler, DataArgument>(client, (uint64_t)self -> client_id); // allocate to heap
+                            ClientInternal<ClientHandler, DataArgument>* clientObj = new ClientInternal<ClientHandler, DataArgument>(client, (uint64_t)self -> client_id, self -> arg); // allocate to heap
                             self -> client_id ++;
                             // because mutexes and ringstrings don't like being moved around the stack
                             self -> clients.push_back(clientObj);
@@ -857,6 +857,7 @@ public:
     void spawnOff(int numThreads, DataArgument* argument) {
         pthread_t buffer;
         threadCount += numThreads;
+        arg = argument;
         for (int i = 0; i < numThreads; i ++) {
             pthread_create(&buffer, NULL, NetworkServer::child, this);
             pthread_detach(buffer); // detach the thread; we will not join it

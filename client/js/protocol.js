@@ -165,14 +165,3 @@ class ProtocolConnection {
         }
     }
 }
-
-var p = new ProtocolConnection('ws://localhost:3001/game', () => {
-    p.loadManifest('manifest.json').then(() => {
-        p.onMessage("outgoing", "TestFrame2", () => {
-            console.log("HI");
-        });
-        console.log("manifest up: time to do other stuff!");
-        var initSender = p.sendHandle("incoming", "Init"); // TODO: fix the protocol names (change from outgoing and incoming to s2c and c2s)
-        initSender(1.375, "hello");
-    });
-});

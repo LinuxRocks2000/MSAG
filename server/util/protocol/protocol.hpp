@@ -16,6 +16,8 @@ namespace protocol {
         void sendTo(SocketSendBuffer<>* buffer); // builds a websocket frame, loads into it, and sends it;
         // a very nice self-contained function with simple memory guarantees. Defined in protocol.cpp.
 
+        void sendTo(int socket); // even nicer, calls sendTo with a new SocketSendBuffer and all.
+
         virtual ~ProtocolFrameBase() = default; // if the destructor isn't virtual, destructors in subclasses won't be called. obviously a problem.
     };
 }

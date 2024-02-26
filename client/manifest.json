@@ -29,17 +29,49 @@
                 ]
             },
             {
-                "className": "TestFrame2",
+                "className": "Welcome",
                 "opcode": 1,
+                "arguments": [] 
+            },
+            {
+                "className": "RoomCreated",
+                "opcode": 2,
                 "arguments": [
                     {
-                        "name": "text",
-                        "type": "string",
-                        "packing": "vector"
+                        "name": "creator",
+                        "type": "uint32_t"
                     },
                     {
-                        "name": "number",
+                        "name": "roomid",
+                        "type": "uint32_t"
+                    }
+                ]
+            },
+            {
+                "className": "SpaceSet",
+                "opcode": 3,
+                "arguments": [
+                    {
+                        "name": "spaceID",
+                        "type": "uint32_t"
+                    },
+                    {
+                        "name": "spaceWidth",
                         "type": "float32_t"
+                    },
+                    {
+                        "name": "spaceHeight",
+                        "type": "float32_t"
+                    }
+                ]
+            },
+            {
+                "className": "IdSet",
+                "opcode": 4,
+                "arguments": [
+                    {
+                        "name": "objectID",
+                        "type": "uint32_t"
                     }
                 ]
             }
@@ -50,15 +82,54 @@
             {
                 "className": "Init",
                 "opcode": 0,
+                "arguments": []
+            },
+            {
+                "className": "RoomCreate",
+                "opcode": 1,
                 "arguments": [
                     {
-                        "name": "number",
-                        "type": "float32_t"
-                    },
-                    {
-                        "name": "text",
+                        "name": "roomName",
                         "type": "string",
                         "packing": "vector"
+                    },
+                    {
+                        "name": "mapName",
+                        "type": "string",
+                        "packing": "vector"
+                    },
+                    {
+                        "name": "creator",
+                        "type": "uint32_t"
+                    }
+                ]
+            },
+            {
+                "className": "RoomJoin",
+                "opcode": 2,
+                "arguments": [
+                    {
+                        "name": "playerName",
+                        "type": "string",
+                        "packing": "vector"
+                    },
+                    {
+                        "name": "playerID",
+                        "type": "uint32_t"
+                    },
+                    {
+                        "name": "roomid",
+                        "type": "uint32_t"
+                    }
+                ]
+            },
+            {
+                "className": "RoomConnect",
+                "opcode": 3,
+                "arguments": [
+                    {
+                        "name": "playerID",
+                        "type": "uint32_t"
                     }
                 ]
             }

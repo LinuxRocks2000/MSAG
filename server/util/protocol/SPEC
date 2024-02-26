@@ -1,0 +1,22 @@
+This is effectively a documentation file for manifest.json. It also holds some of the protocol TODOS.
+
+TODO: change the protocol names to make more sense (right now the client code looks really weird because all of its outgoing messages are in the incoming protocol)
+
+The workflow is simple. Clients send RoomCreate, RoomJoin, etc. RoomCreate contains a 32-bit validation code - this is NOT useful for indexing, but identifies
+the client that created the room whenever it wants to make changes. This is not great security, but I think it's probably fine. It is up to clients to remember
+what rooms they control and what their validation codes are!
+Upon RoomCreate, the server will send a RoomCreated frame with the validation code enclosed (the server may change it if there's a problem, so the client should use the code it gets from the server rather than the one it generated) and the room ID. If room creation
+fails, the server will not inform the client, and will simply terminate the connection; obviously the client has not attempted to get information on the server first
+and cannot be trusted.
+Which brings me to session init.
+Session initiation is when the client sends the Init command.
+// TODO: Add user session stuff with the Init command! Right now it's empty.
+When the session is properly initiated, the server will send a Welcome command containing all pertinent data, which at the moment is empty.
+
+RoomJoin contains a player code (this works the same way as the creator code), a player handle, and a room ID. This creates a new player with that code and connects it to
+the room
+
+// TODO: SECURITY! Right now this program relies on the probability of a collision between a small number (less than 20) of random uint32_ts being 
+sufficiently low enough that the possibility can be safely ignored. This is probably not actually the case! We need some way to have the server provide secure (not
+possible to reverse-engineer another player's ID) IDs to players when they join.
+At the moment, the server will simply refuse join requests that have colliding IDs.

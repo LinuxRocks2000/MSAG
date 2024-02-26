@@ -19,14 +19,18 @@ struct Game; // forward-dec
 
 struct Room { // manages maps inside a game
     Game* game;
-    void* handle;
+    void* handle; // internal dynload thing. don't touch it.
     uint32_t spaceID = 1;
+    uint32_t creator;
     bool allowAnonymous = true; // can anonymous players join this room?
     bool requireApproval = false; // do players have to be approved by superuser to join this room?
     std::vector<Player> players;
     std::vector<std::shared_ptr<Space>> mSpaces;
+    std::string name; // name of the room
+    uint32_t id;
 
-    Room(Game* g, const char* mapFile); // Takes a Game and the name of the map shared object it's gonna load
+    Room(Game* g, const char* mapFile, std::string n); // Takes a Game and the name of the map shared object it's gonna load
 
     virtual void addSpace(Space* s); // vtable lookups work across dynamic loads, so we can use member functions sanely! I love it when things just work.
+    // now I am tyler from slightly later (about a week), and would like to say: things "just working" cannot be trusted. I'm very paranoid now.
 };
