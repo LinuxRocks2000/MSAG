@@ -38,6 +38,27 @@ void loadSpaceTo(std::shared_ptr<Space> space, int socket) { // TODO: make this 
     s.spaceWidth = space -> width;
     s.spaceHeight = space -> height;
     s.sendTo(socket);
+    for (size_t i = 0; i < space -> groundLayer.size(); i ++) {
+        protocol::outgoing::GroundSet groundSet;
+        groundSet.x = space -> groundLayer[i].shape.x;
+        groundSet.y = space -> groundLayer[i].shape.y;
+        groundSet.width = space -> groundLayer[i].shape.width;
+        groundSet.height = space -> groundLayer[i].shape.height;
+        groundSet.id = space -> groundLayer[i].spaceID;
+        groundSet.type = space -> groundLayer[i].type;
+        groundSet.sendTo(socket);
+    }
+    for (size_t i = 0; i < space -> players.size(); i ++) {
+        protocol::outgoing::PlayerSet playerSet;
+        playerSet.x = space -> players[i].shape.x;
+        playerSet.y = space -> players[i].shape.y;
+        playerSet.width = space -> players[i].shape.width;
+        playerSet.height = space -> players[i].shape.height;
+        playerSet.id = space -> players[i].spaceID;
+        playerSet.health = space -> players[i].stats.health;
+        playerSet.maxHealth = space -> players[i].stats.maxHealth;
+        playerSet.sendTo(socket);
+    }
 }
 
 
@@ -116,6 +137,7 @@ struct Handler {
         }
         else if (opcode == protocol::incoming::RoomConnect::opcode) {
             protocol::incoming::RoomConnect message(databuf);
+            printf("Player connect attempt %u\n", message.playerID);
             cPlayer = game -> playerSearch(message.playerID);
             if (cPlayer != nullptr) {
                 cPlayer -> active = true;

@@ -11,9 +11,9 @@
 // TODO: separate into a header and a definition (because eventually we're going to need to do makefile)
 #pragma once
 
-#define GROUND_TYPE_SOIL  0 // The simplest ground type. You can walk on it fine, and garden on it find. It has no special behaviors. Holds water.
-#define GROUND_TYPE_SAND  1 // Hard to walk on, low gardening potential, perfectly absorbs water. Very annoying.
-#define GROUND_TYPE_ROCKS 2 // Easy to walk on, impossible to garden on for most plants.
+// Soil is the simplest ground type. You can walk on it fine, and garden on it find. It has no special behaviors. Holds water.
+// Sand is hard to walk on, low gardening potential, perfectly absorbs water. Very annoying.
+// Rocks are easy to walk on, impossible to garden on for most plants.
 // Every ground type can have different parameters; the ones listed above are just general guidelines. The reason for the ground type system is to
 // allow special behaviors - like, you can't plant *most* things on sand, but sand will accept cactii (which can't grow elsewhere) and palm trees and such.
 // Add more types at convenience.
@@ -23,6 +23,7 @@
 #include <mutex>
 #include <vector>
 #include <player.hpp>
+#include <types.h>
 struct Room; // forward-dec. BIG, BIG TODO: Make this a proper Makefile project with separate header files and definitions! Will save us a LOT of pain!
 
 
@@ -43,7 +44,7 @@ struct Ground { // all ground types are stored in this struct. It's slightly mor
             .shape = r,
             .moveHindrance = 0.2, // a little higher than Rock.
             .gardenPotential = 0.3, // it's pretty good for gardening too
-            .type = GROUND_TYPE_SOIL
+            .type = TYPE_GROUND_SOIL
         };
     }
 };

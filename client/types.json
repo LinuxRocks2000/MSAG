@@ -1,0 +1,7 @@
+{
+    "GROUND": {
+        "SOIL": 0,
+        "SAND": 1,
+        "ROCKS": 2
+    }
+}

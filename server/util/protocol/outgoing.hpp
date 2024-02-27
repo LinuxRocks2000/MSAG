@@ -54,4 +54,31 @@ IdSet();
 void load(char* buffer);
 size_t getSize();
 };
+struct GroundSet : ProtocolFrameBase {
+static uint8_t opcode;
+float32_t x;
+float32_t y;
+float32_t width;
+float32_t height;
+uint32_t id;
+uint32_t type;
+GroundSet(const char* data);
+GroundSet();
+void load(char* buffer);
+size_t getSize();
+};
+struct PlayerSet : ProtocolFrameBase {
+static uint8_t opcode;
+float32_t x;
+float32_t y;
+float32_t width;
+float32_t height;
+uint32_t id;
+float32_t health;
+float32_t maxHealth;
+PlayerSet(const char* data);
+PlayerSet();
+void load(char* buffer);
+size_t getSize();
+};
 }

@@ -74,6 +74,70 @@
                         "type": "uint32_t"
                     }
                 ]
+            },
+            {
+                "className": "GroundSet",
+                "opcode": 5,
+                "arguments": [
+                    {
+                        "name": "x",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "y",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "width",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "height",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "id",
+                        "type": "uint32_t"
+                    },
+                    {
+                        "name": "type",
+                        "type": "uint32_t"
+                    }
+                ]
+            },
+            {
+                "className": "PlayerSet",
+                "opcode": 6,
+                "arguments": [
+                    {
+                        "name": "x",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "y",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "width",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "height",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "id",
+                        "type": "uint32_t"
+                    },
+                    {
+                        "name": "health",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "maxHealth",
+                        "type": "float32_t"
+                    }
+                ]
             }
         ]
     },

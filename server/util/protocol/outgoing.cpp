@@ -158,3 +158,111 @@ buffer += sizeof(uint32_t); // see above
 size_t protocol::outgoing::IdSet::getSize() {
 return 1 + sizeof(uint32_t);
 }
+protocol::outgoing::GroundSet::GroundSet() {}
+uint8_t protocol::outgoing::GroundSet::GroundSet::opcode = 5;
+protocol::outgoing::GroundSet::GroundSet(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&x)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&y)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&width)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&height)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&id)[i] = data[i];
+}
+data += sizeof(uint32_t);
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&type)[i] = data[i];
+}
+data += sizeof(uint32_t);
+}
+void protocol::outgoing::GroundSet::load(char* buffer) {
+size_t size;
+buffer[0] = 5;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&x)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&y)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&width)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&height)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&id)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&type)[i];}
+buffer += sizeof(uint32_t); // see above
+}
+
+size_t protocol::outgoing::GroundSet::getSize() {
+return 1 + sizeof(float32_t) + sizeof(float32_t) + sizeof(float32_t) + sizeof(float32_t) + sizeof(uint32_t) + sizeof(uint32_t);
+}
+protocol::outgoing::PlayerSet::PlayerSet() {}
+uint8_t protocol::outgoing::PlayerSet::PlayerSet::opcode = 6;
+protocol::outgoing::PlayerSet::PlayerSet(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&x)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&y)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&width)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&height)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(uint32_t); i ++) {
+((char*)&id)[i] = data[i];
+}
+data += sizeof(uint32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&health)[i] = data[i];
+}
+data += sizeof(float32_t);
+for (size_t i = 0; i < sizeof(float32_t); i ++) {
+((char*)&maxHealth)[i] = data[i];
+}
+data += sizeof(float32_t);
+}
+void protocol::outgoing::PlayerSet::load(char* buffer) {
+size_t size;
+buffer[0] = 6;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&x)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&y)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&width)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&height)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(uint32_t); i ++){buffer[i] = ((char*)&id)[i];}
+buffer += sizeof(uint32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&health)[i];}
+buffer += sizeof(float32_t); // see above
+for (uint8_t i = 0; i < sizeof(float32_t); i ++){buffer[i] = ((char*)&maxHealth)[i];}
+buffer += sizeof(float32_t); // see above
+}
+
+size_t protocol::outgoing::PlayerSet::getSize() {
+return 1 + sizeof(float32_t) + sizeof(float32_t) + sizeof(float32_t) + sizeof(float32_t) + sizeof(uint32_t) + sizeof(float32_t) + sizeof(float32_t);
+}

@@ -89,6 +89,7 @@ Player* Game::playerSearch(uint32_t id) { // TODO: search the frozen spaces and 
     for (size_t i = 0; i < spaces.size(); i ++) {
         for (size_t j = 0; j < spaces[i] -> players.size(); j ++) {
             if (spaces[i] -> players[j].id == id) {
+                dataEdit.unlock();
                 return &(spaces[i] -> players[j]);
             }
         }

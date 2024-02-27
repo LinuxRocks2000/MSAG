@@ -10,6 +10,23 @@ var spaceH = 0;
 var cx = 0; // viewport position, relative to screen center
 var cy = 0; // these will eventually be controlled by the Player.
 
+var playerObjId = -1;
+
+
+var typeInfo = undefined;
+
+fetch("types.json").then(data => {
+    data.json().then(json => {
+        typeInfo = json;
+        console.log(typeInfo);
+    });
+});
+
+
+var objects = {}; // "master" list with ID-based indexing
+var ground = []; // smaller "specialized" lists with standard array indexing, containing references to the objects.
+var players = [];
+
 
 function rand32() { // Cryptographically INSECURE random uint32. 
     // generates two random 16-bit ints and shifts one up to the MSB
@@ -24,13 +41,28 @@ var canvas = document.getElementById("main");
 var ctx = canvas.getContext("2d");
 
 
+function tileDraw(image, tileW, tileH, x, y, width, height) {
+    // TODO: efficiency (don't draw unnecessary tiles)
+    for (var x = 0; x < width / tileW; x++) {
+        for (var y = 0; y < height / tileH; y++) {
+            ctx.drawImage(image, x * tileW, y * tileH);
+        }
+    }
+}
+
+
 function gameloop() {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
     ctx.translate(window.innerWidth / 2 - cx, window.innerHeight / 2 - cy);
-    ctx.fillStyle = "#987654";
+    ctx.fillStyle = "lightgrey";
     ctx.fillRect(0, 0, spaceW, spaceH);
-    ctx.translate(-window.innerWidth/2 + cx, -window.innerHeight/2 + cy);
+    ground.forEach(groundPiece => {
+        if (groundPiece.type == typeInfo.GROUND.SOIL) {
+            tileDraw(document.getElementById("soilTile"), 100, 100, groundPiece.x, groundPiece.y, groundPiece.width, groundPiece.height);
+        }
+    });
+    ctx.translate(-window.innerWidth / 2 + cx, -window.innerHeight / 2 + cy);
     requestAnimationFrame(gameloop);
 }
 
@@ -69,6 +101,14 @@ var p = new ProtocolConnection('ws://localhost:3001/game', () => {
             localStorage.ownedRooms = JSON.stringify(ownedRooms); // TODO: make this nicer with a Proxy or something (or a set of helper functions)
             alert("Room successfully created! The room code is " + params.roomid + ".");
         }); // the RoomCreated command is only sent to the actual creator, so we know the creator id is us
+        p.onMessage("outgoing", "GroundSet", params => {
+            // SetGround MAY NEVER BE CALLED MORE THAN ONCE PER GROUND PIECE IN ONE SESSION!
+            objects[params.id] = params;
+            ground.push(objects[params.id]);
+        });
+        p.onMessage("outgoing", "IdSet", (params) => {
+            playerObjId = params.objectID;
+        });
         document.getElementById("create-room").onclick = () => {
             var roomOwnerKey = rand32();
             createRoom(document.getElementById("newroomname").value, document.getElementById("newroommapname").value, roomOwnerKey);

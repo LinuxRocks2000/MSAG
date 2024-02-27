@@ -20,3 +20,5 @@ the room
 sufficiently low enough that the possibility can be safely ignored. This is probably not actually the case! We need some way to have the server provide secure (not
 possible to reverse-engineer another player's ID) IDs to players when they join.
 At the moment, the server will simply refuse join requests that have colliding IDs.
+
+There are a number of [Class]Set commands. These are NOT to be called except when initially sending data to the client, or when a new object is created! This is because they cover all relevant data, which is bulky and overly specialized. Use the much lighter and more universal Move, HealthSet, SkillSet, StatusSet, etc commands during actual gameplay.
