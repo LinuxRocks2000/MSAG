@@ -34,4 +34,11 @@ extern "C" {
         game -> pushSpace(ptr);
         mSpaces.push_back(ptr);
     }
+
+    std::shared_ptr<Space> Room::addSpace(float width, float height) { // creates the space for you. Isn't it nice?
+        auto s = std::shared_ptr<Space>(new Space(width, height));
+        game -> pushSpace(s);
+        mSpaces.push_back(s);
+        return s;
+    }
 }

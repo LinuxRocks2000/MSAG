@@ -28,6 +28,17 @@ var ground = []; // smaller "specialized" lists with standard array indexing, co
 var players = [];
 
 
+var keys = {};
+
+window.addEventListener("keydown", (evt) => {
+    keys[evt.key] = true;
+});
+
+window.addEventListener("keyup", (evt) => {
+    keys[evt.key] = false;
+});
+
+
 function rand32() { // Cryptographically INSECURE random uint32. 
     // generates two random 16-bit ints and shifts one up to the MSB
     // since integers are always signed in JavaScript
@@ -51,6 +62,9 @@ function tileDraw(image, tileW, tileH, x, y, width, height) {
 }
 
 
+var inputUpdate = undefined;
+
+
 function gameloop() {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
@@ -62,6 +76,17 @@ function gameloop() {
             tileDraw(document.getElementById("soilTile"), 100, 100, groundPiece.x, groundPiece.y, groundPiece.width, groundPiece.height);
         }
     });
+    players.forEach(player => {
+        ctx.fillStyle = "green";
+        ctx.fillRect(player.x, player.y, 50, 50);
+        if (player.id == playerObjId) {
+            ctx.fillStyle = "blue";
+            ctx.fillRect(player.x + 12.5, player.y + 12.5, 25, 25);
+            cx = player.x;
+            cy = player.y;
+        }
+    }); // TODO: 1000D made some nice art for players, need to swap that in! (hint hint, dear 1000D)
+    inputUpdate(keys["ArrowUp"], keys["ArrowDown"], keys["ArrowLeft"], keys["ArrowRight"]);
     ctx.translate(-window.innerWidth / 2 + cx, -window.innerHeight / 2 + cy);
     requestAnimationFrame(gameloop);
 }
@@ -84,6 +109,7 @@ var p = new ProtocolConnection('ws://localhost:3001/game', () => {
         var createRoom = p.sendHandle("incoming", "RoomCreate");
         var joinRoom = p.sendHandle("incoming", "RoomJoin");
         var connect = p.sendHandle("incoming", "RoomConnect");
+        inputUpdate = p.sendHandle("incoming", "InputUpdate");
         initSender();
         p.onMessage("outgoing", "Welcome", () => {
             console.log("The server has kindly welcomed us!");
@@ -106,8 +132,16 @@ var p = new ProtocolConnection('ws://localhost:3001/game', () => {
             objects[params.id] = params;
             ground.push(objects[params.id]);
         });
+        p.onMessage("outgoing", "PlayerSet", params => {
+            objects[params.id] = params;
+            players.push(objects[params.id]);
+        });
         p.onMessage("outgoing", "IdSet", (params) => {
             playerObjId = params.objectID;
+        });
+        p.onMessage("outgoing", "Move", (params) => {
+            objects[params.id].x = params.x;
+            objects[params.id].y = params.y;
         });
         document.getElementById("create-room").onclick = () => {
             var roomOwnerKey = rand32();

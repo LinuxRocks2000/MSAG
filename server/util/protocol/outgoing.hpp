@@ -71,13 +71,21 @@ struct PlayerSet : ProtocolFrameBase {
 static uint8_t opcode;
 float32_t x;
 float32_t y;
-float32_t width;
-float32_t height;
 uint32_t id;
 float32_t health;
 float32_t maxHealth;
 PlayerSet(const char* data);
 PlayerSet();
+void load(char* buffer);
+size_t getSize();
+};
+struct Move : ProtocolFrameBase {
+static uint8_t opcode;
+float32_t x;
+float32_t y;
+uint32_t id;
+Move(const char* data);
+Move();
 void load(char* buffer);
 size_t getSize();
 };

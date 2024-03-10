@@ -141,3 +141,42 @@ buffer += sizeof(uint32_t); // see above
 size_t protocol::incoming::RoomConnect::getSize() {
 return 1 + sizeof(uint32_t);
 }
+protocol::incoming::InputUpdate::InputUpdate() {}
+uint8_t protocol::incoming::InputUpdate::InputUpdate::opcode = 4;
+protocol::incoming::InputUpdate::InputUpdate(const char* data) {
+size_t len;
+for (size_t i = 0; i < sizeof(bool); i ++) {
+((char*)&up)[i] = data[i];
+}
+data += sizeof(bool);
+for (size_t i = 0; i < sizeof(bool); i ++) {
+((char*)&down)[i] = data[i];
+}
+data += sizeof(bool);
+for (size_t i = 0; i < sizeof(bool); i ++) {
+((char*)&left)[i] = data[i];
+}
+data += sizeof(bool);
+for (size_t i = 0; i < sizeof(bool); i ++) {
+((char*)&right)[i] = data[i];
+}
+data += sizeof(bool);
+}
+void protocol::incoming::InputUpdate::load(char* buffer) {
+size_t size;
+buffer[0] = 4;
+buffer ++; // clever C hack: rather than worrying about current index, we can just consume a byte of the buffer.
+// This is very fast and makes life a lot easier.
+for (uint8_t i = 0; i < sizeof(bool); i ++){buffer[i] = ((char*)&up)[i];}
+buffer += sizeof(bool); // see above
+for (uint8_t i = 0; i < sizeof(bool); i ++){buffer[i] = ((char*)&down)[i];}
+buffer += sizeof(bool); // see above
+for (uint8_t i = 0; i < sizeof(bool); i ++){buffer[i] = ((char*)&left)[i];}
+buffer += sizeof(bool); // see above
+for (uint8_t i = 0; i < sizeof(bool); i ++){buffer[i] = ((char*)&right)[i];}
+buffer += sizeof(bool); // see above
+}
+
+size_t protocol::incoming::InputUpdate::getSize() {
+return 1 + sizeof(bool) + sizeof(bool) + sizeof(bool) + sizeof(bool);
+}

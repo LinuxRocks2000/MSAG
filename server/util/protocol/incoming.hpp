@@ -43,4 +43,15 @@ RoomConnect();
 void load(char* buffer);
 size_t getSize();
 };
+struct InputUpdate : ProtocolFrameBase {
+static uint8_t opcode;
+bool up;
+bool down;
+bool left;
+bool right;
+InputUpdate(const char* data);
+InputUpdate();
+void load(char* buffer);
+size_t getSize();
+};
 }

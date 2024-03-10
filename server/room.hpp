@@ -33,4 +33,8 @@ struct Room { // manages maps inside a game
 
     virtual void addSpace(Space* s); // vtable lookups work across dynamic loads, so we can use member functions sanely! I love it when things just work.
     // now I am tyler from slightly later (about a week), and would like to say: things "just working" cannot be trusted. I'm very paranoid now.
+
+    virtual std::shared_ptr<Space> addSpace(float width, float height); // creates the space for you. Isn't it nice?
+    // tyler from a few days? weeks? whatever, time doesn't pass in the twilight zone says the virtual thing is pretty cool
+    // I'm very glad that it still works, wish it worked with constructors the normal way though.
 };

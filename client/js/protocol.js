@@ -38,6 +38,14 @@ const lexicon = {
             return ret;
         }
     },
+    "bool": {
+        encode(data) {
+            return [data ? 1 : 0];
+        },
+        decode(data) {
+            return data.popByte() == 0 ? false : true;
+        }
+    },
     "float32_t": {
         encode(data) {
             var buf = new ArrayBuffer(4);
@@ -61,7 +69,6 @@ const lexicon = {
     "string": {
         encode(string) {
             var data = new TextEncoder("utf-8").encode(string);
-            console.log(data);
             var ret = [];
             if (data.length >= 255) {
                 ret.push(255);
@@ -144,7 +151,6 @@ class ProtocolConnection {
                     f.arguments.forEach((arg, i) => {
                         frame.push(...lexicon[arg.type].encode(frameArgs[i]));
                     });
-                    console.log(frame);
                     this.socket.send(new Uint8Array(frame));
                 }
             }

@@ -20,6 +20,9 @@
 // WARNING: This application's network code is generally endianness-specific! The client will work anywhere numbers are sold, but the server is a bit pickier.
 // If the server isn't working, the FIRST THING YOU SHOULD DO is test endianness!
 
+// TODO: add more complex structures (Rect, vector, Inputs) to the JavaScript end of the protocol and VERIFY THAT THEY ARE STATICALLY ENCODEABLE!
+// remember, structure padding is a thing!
+
 #include <time.h>
 #include <cstdint>
 #include "util/net.hpp"
@@ -52,8 +55,6 @@ void loadSpaceTo(std::shared_ptr<Space> space, int socket) { // TODO: make this 
         protocol::outgoing::PlayerSet playerSet;
         playerSet.x = space -> players[i].shape.x;
         playerSet.y = space -> players[i].shape.y;
-        playerSet.width = space -> players[i].shape.width;
-        playerSet.height = space -> players[i].shape.height;
         playerSet.id = space -> players[i].spaceID;
         playerSet.health = space -> players[i].stats.health;
         playerSet.maxHealth = space -> players[i].stats.maxHealth;
@@ -99,7 +100,7 @@ struct Handler {
         return false; // just fer testin' up
     }
 
-    void gotWebsocketMessage(WebSocketFrame frame) {
+    void gotWebsocketMessage(WebSocketFrame frame) { // TODO: Make sure only one user can be logged in as a certain player at a time! This is pretty dang important!
         uint8_t opcode = frame.payload[0];
         const char* databuf = frame.payload.c_str() + 1;
         if (opcode == protocol::incoming::Init::opcode) { // no reason to unload the data buffer, Init has no data
@@ -139,6 +140,7 @@ struct Handler {
             protocol::incoming::RoomConnect message(databuf);
             printf("Player connect attempt %u\n", message.playerID);
             cPlayer = game -> playerSearch(message.playerID);
+            cPlayer -> connectedSocket = socket;
             if (cPlayer != nullptr) {
                 cPlayer -> active = true;
                 cPlayer -> currentSpace -> playerCount ++;
@@ -151,6 +153,13 @@ struct Handler {
             else {
                 printf("nonexistent player connect %u?\n", message.playerID);
             }
+        }
+        else if (opcode == protocol::incoming::InputUpdate::opcode) {
+            protocol::incoming::InputUpdate message(databuf);
+            cPlayer -> currentInputs.up = message.up;
+            cPlayer -> currentInputs.down = message.down;
+            cPlayer -> currentInputs.left = message.left;
+            cPlayer -> currentInputs.right = message.right;
         }
     }
 };

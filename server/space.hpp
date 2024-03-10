@@ -8,7 +8,6 @@
     If you're lookin' to contribute, just ctrl+F for the word "TODO". There's a *lot* of TODO. Seriously. If your only contribution to the file is
     to add your name at the top, I'm not going to accept it. I'm looking at you, 1000D ;)
 */
-// TODO: separate into a header and a definition (because eventually we're going to need to do makefile)
 #pragma once
 
 // Soil is the simplest ground type. You can walk on it fine, and garden on it find. It has no special behaviors. Holds water.
@@ -24,6 +23,7 @@
 #include <vector>
 #include <player.hpp>
 #include <types.h>
+#include <util/protocol/outgoing.hpp>
 struct Room; // forward-dec. BIG, BIG TODO: Make this a proper Makefile project with separate header files and definitions! Will save us a LOT of pain!
 
 
@@ -38,15 +38,6 @@ struct Ground { // all ground types are stored in this struct. It's slightly mor
     uint32_t spaceID; // ID of this object within the space
 
     // Everything can always move over ground. It doesn't obstruct.
-    
-    static Ground makeBasicEarth(Rect r) { // The simplest soil type. you always have to configure the x, y, w, h properties yourself!
-        return {
-            .shape = r,
-            .moveHindrance = 0.2, // a little higher than Rock.
-            .gardenPotential = 0.3, // it's pretty good for gardening too
-            .type = TYPE_GROUND_SOIL
-        };
-    }
 };
 
 
@@ -86,27 +77,25 @@ struct Space {
 
     uint32_t topSpaceID = 0; // ids of things actually inside this space
     
-    uint32_t allocateID() {
-        topSpaceID ++;
-        return topSpaceID - 1;
+    uint32_t allocateID();
+
+    Space(float w, float h);
+
+    template<typename T>
+    void sendToAll(T message) {
+        for (size_t i = 0; i < players.size(); i ++) {
+            if (players[i].connectedSocket != -1) { // we can't send to some players because they're not actually connected to a client
+                message.sendTo(players[i].connectedSocket); // messages can be sent and resent. it's a really nice feature IIDSSM.
+            }
+        }
     }
 
-    Space(float w, float h) {
-        spaceID = 0;
-        width = w;
-        height = h;
-    }
+    void addGround(Ground g);
 
-    void addGround(Ground g) {
-        groundLayer.push_back(g);
-    }
+    void addPlayer(Player p);
 
-    void addPlayer(Player p) {
-        p.spaceID = allocateID();
-        players.push_back(p);
-    }
+    void update();
 
-    void update() {
-        //printf("%d got updated!\n", spaceID);
-    }
+    virtual Ground* makeBasicEarth(Rect r); // WARNING: THIS POINTER IS NOT TRUSTWORTHY!
+    // IT *WILL* BE INVALIDATED NEXT TIME WE CALL ANY GROUND-ADDING FUNCTION! DON'T BE STUPID!
 };

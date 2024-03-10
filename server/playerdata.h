@@ -1,6 +1,7 @@
 // player stats ONLY (no position or inventory or the like)
 // I'm mainly writing this for note-taking purposes
 #pragma once
+#include <cstdint>
 
 struct PlayerStats {
     float health;                    // the current health of the player. No larger than maxHealth, and if it goes below 0 you die (full sleep heals you to max).

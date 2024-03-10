@@ -12,4 +12,8 @@ struct Rect {
             y + height > nebber.y &&
             y < nebber.y + nebber.height;
     }
+
+    bool operator==(Rect& other) {
+        return x == other.x && y == other.y && width == other.width && height == other.height;
+    }
 };

@@ -118,14 +118,6 @@
                         "type": "float32_t"
                     },
                     {
-                        "name": "width",
-                        "type": "float32_t"
-                    },
-                    {
-                        "name": "height",
-                        "type": "float32_t"
-                    },
-                    {
                         "name": "id",
                         "type": "uint32_t"
                     },
@@ -136,6 +128,24 @@
                     {
                         "name": "maxHealth",
                         "type": "float32_t"
+                    }
+                ]
+            },
+            {
+                "className": "Move",
+                "opcode": 7,
+                "arguments": [
+                    {
+                        "name": "x",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "y",
+                        "type": "float32_t"
+                    },
+                    {
+                        "name": "id",
+                        "type": "uint32_t"
                     }
                 ]
             }
@@ -194,6 +204,28 @@
                     {
                         "name": "playerID",
                         "type": "uint32_t"
+                    }
+                ]
+            },
+            {
+                "className": "InputUpdate",
+                "opcode": 4,
+                "arguments": [
+                    {
+                        "name": "up",
+                        "type": "bool"
+                    },
+                    {
+                        "name": "down",
+                        "type": "bool"
+                    },
+                    {
+                        "name": "left",
+                        "type": "bool"
+                    },
+                    {
+                        "name": "right",
+                        "type": "bool"
                     }
                 ]
             }
